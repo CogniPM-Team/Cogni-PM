@@ -3,13 +3,13 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+  - package-ecosystem: pip
+    directory: /backend
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
 
-  # Uncomment each block once its folder has a manifest; with none, Dependabot errors.
+  # Uncomment once frontend/package.json exists; with no manifest Dependabot errors.
   # - package-ecosystem: npm
   #   directory: /frontend
-  #   schedule: { interval: weekly }
-  #   open-pull-requests-limit: 5
-  # - package-ecosystem: pip
-  #   directory: /backend
   #   schedule: { interval: weekly }
   #   open-pull-requests-limit: 5

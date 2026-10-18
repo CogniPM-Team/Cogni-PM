@@ -1,14 +1,5 @@
 # Contributing
 
-## Layout
-
-```
-frontend/   React + TypeScript + Vite
-backend/    Python + FastAPI (LangGraph orchestration, MCP gateway, pgvector RAG)
-```
-
-CI expects: `frontend/package.json` with `lint` and `build` scripts, and `backend/pyproject.toml` with a `dev` extra that includes `pytest` and `ruff`.
-
 ## Workflow
 
 `main` is protected: no direct pushes, merge by pull request only.
@@ -23,18 +14,22 @@ git push -u origin feat/short-description
 Open a PR, fill in the template, get one approval and a green `ci`, then **Squash and merge**. The branch deletes itself.
 
 Branch names: `feat/…`, `fix/…`, `chore/…`, `docs/…`.
-Commit / PR title style: `feat: add estimate review page`, `fix: handle empty Jira scope`.
+Commit / PR title style: `feat: add milestone guardrail`, `fix: handle empty Jira scope`.
 
 ## Run the checks locally (same as CI)
 
 ```bash
-# frontend
-cd frontend && npm ci && npm run lint && npx tsc --noEmit && npm test --if-present && npm run build
-
-# backend (needs Postgres with pgvector; set DATABASE_URL)
-cd backend && pip install -e ".[dev]" && ruff check . && ruff format --check . && pytest -q
+cd backend
+pip install -e ".[dev]"
+ruff check . && ruff format --check . && pytest -q
 ```
 
-## Secrets
+`ruff format .` fixes formatting for you. The frontend has no checks yet (see `frontend/README.md`).
 
-Never commit credentials. Copy `.env.example` to `.env` locally. Production secrets live in GitHub Environments and the hosting platforms, not in the repo.
+## Rules that matter
+
+- **Add a dependency in the same PR that first imports it**, and say why in the PR description.
+- **Never print to stdout in backend code.** The MCP gateway speaks over stdio; a stray `print()` silently breaks it. Log to stderr.
+- **Never commit secrets.** Copy `.env.example` to `.env` locally. Production secrets live in GitHub Environments and the hosting platforms.
+- **Test the refusal paths.** For anything that gates a write (a guardrail, a missing approval token, a tool that must not exist at a level), the test that matters is the one proving the system *refuses*.
+- **Tests must not need credentials or network.** Use `httpx.MockTransport` for Jira (see `backend/tests/test_jira.py`). Only `scripts/` talks to a real site.

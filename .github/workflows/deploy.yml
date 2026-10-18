@@ -1,22 +1,28 @@
 name: deploy
 
-# Runs only after `ci` succeeds on main. Vercel (frontend) and Render (backend)
-# are triggered through deploy hooks stored as secrets on the `production`
-# environment, which can require a human reviewer before the job proceeds.
-# Disable each platform's own auto-deploy-on-push so this is the only path to prod.
+# Manual-only for now: there is nothing to deploy yet. Once there is, change the trigger to:
+#
+#   on:
+#     workflow_run:
+#       workflows: [ci]
+#       types: [completed]
+#       branches: [main]
+#
+# and add `if: github.event.workflow_run.conclusion == 'success'` to the job, so production
+# only ever deploys code that passed CI.
+#
+# Vercel (frontend) and Render (backend) are triggered through deploy hooks stored as
+# secrets on the `production` environment, which can require a human reviewer. Turn off each
+# platform's own auto-deploy-on-push so this workflow is the only path to production.
 
 on:
-  workflow_run:
-    workflows: [ci]
-    types: [completed]
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   production:
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment: production
     steps:
