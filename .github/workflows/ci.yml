@@ -20,7 +20,7 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Guard: lets CI pass while frontend/ doesn't exist yet. Delete once it does.
       - id: chk
         working-directory: .
@@ -64,7 +64,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://cognipm:cognipm@localhost:5432/cognipm_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Guard: lets CI pass while backend/ doesn't exist yet. Delete once it does.
       - id: chk
         working-directory: .
