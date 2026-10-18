@@ -1,0 +1,32 @@
+name: deploy
+
+# Runs only after `ci` succeeds on main. Vercel (frontend) and Render (backend)
+# are triggered through deploy hooks stored as secrets on the `production`
+# environment, which can require a human reviewer before the job proceeds.
+# Disable each platform's own auto-deploy-on-push so this is the only path to prod.
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  production:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy frontend (Vercel)
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then echo "VERCEL_DEPLOY_HOOK_URL not set, skipping"; else curl -fsS -X POST "$HOOK"; fi
+      - name: Deploy backend (Render)
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then echo "RENDER_DEPLOY_HOOK_URL not set, skipping"; else curl -fsS -X POST "$HOOK"; fi
