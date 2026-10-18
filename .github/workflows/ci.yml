@@ -70,7 +70,7 @@ jobs:
         working-directory: .
         run: echo "present=$([ -f backend/pyproject.toml ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - if: steps.chk.outputs.present == 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
