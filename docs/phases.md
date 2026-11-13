@@ -166,6 +166,21 @@ The heart of the project: autonomy enforced by which tools exist.
 **Done when:** `claude mcp list` shows the gateway connected, `/mcp` lists the right tools per mode, and a
 scripted M2 run from Claude Code stages a draft story without touching Jira.
 
+**Status (13 Nov): built.** 104 tests pass against a real Postgres, ruff is clean, and
+`scripts/demo_stage.py` ran against the real `MCP` site: the gateway, launched as an MCP client over stdio,
+offered M1 two read tools, M2 six tools without `commit_changes`, and M3 seven; an M2 run staged a draft and
+the project still had 14 issues before and after. Not yet checked: `claude mcp list` (needs a reachable
+`DATABASE_URL`, because every mode connects to the database at startup). Decisions taken while building:
+- `sources` is a list of quoted passages (strings); `propose_task_breakdown` makes `subtask` drafts only (the
+  `task` kind exists in the schema for later); a sub-task's parent is `parent_key` **or** `parent_change_id`.
+- `staged_changes.status` also has `rejected` (the PM unticks or rejects a draft); `runs.status` also has
+  `failed`. A failed `commit_changes` leaves the token unconsumed so a retry creates only what is left.
+- The milestone rule is ported but **not in the chain**: P1/P2 set no dates, so it has nothing to check until a
+  tool can change a due date. The chain (`GUARDRAILS`) is empty and logs refusals by guardrail name.
+- `issue_approval_token()` lives in `gateway/server.py` as a plain function, not a tool, so an agent can never
+  mint one. Phase 5's approve route will call it.
+- Added the optional `embedded-db` extra (`pgserver`) so the database tests run without Docker.
+
 **Suggested commit message**
 
 ```

@@ -3,8 +3,8 @@
 The decisions below are settled; they come from a working prototype and the Phase 0 decisions in
 `phases.md`. If you think one is wrong, say so in a PR or issue rather than quietly building around it.
 
-Status: only the Jira client is built. The diagrams show the target design; each box is labelled with the
-phase in `phases.md` that builds it.
+Status: the Jira client, the Postgres schema and the mode-scoped gateway are built (Phases 1 and 2). The
+diagrams show the target design; each box is labelled with the phase in `phases.md` that builds it.
 
 ## What this is, and is not
 
@@ -295,8 +295,8 @@ study measures edit rate, rejection rate and time to decision.
 | Path | Holds | Phase |
 |---|---|---|
 | `backend/cognipm/gateway/jira.py` | Jira REST client, ADF helpers, key validation | 1 (built) |
-| `backend/cognipm/gateway/server.py`, `apply.py` | Mode-scoped MCP tools, the one Jira write path | 2 |
-| `backend/cognipm/db/` | Postgres schema, migrations, `log_audit()` | 2 |
+| `backend/cognipm/gateway/server.py`, `apply.py`, `guardrails.py` | Mode-scoped MCP tools, the one Jira write path, the (empty) guardrail chain | 2 (built) |
+| `backend/cognipm/db/` | Postgres schema, migrations, `log_audit()` | 2 (built) |
 | `backend/cognipm/orchestrator/` | LangGraph agent that calls the gateway over stdio | 3 |
 | `backend/cognipm/api/` | FastAPI control-plane API | 5 |
 | `backend/cognipm/automations/` | M3 automations: grants, poll scheduler, undo | 8 |

@@ -5,13 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cognipm-backend"
 version = "0.1.0"
-description = "CogniPM backend: Jira connection today; MCP gateway, orchestrator and API to come"
+description = "CogniPM backend: Jira client, Postgres schema and mode-scoped MCP gateway; orchestrator and API to come"
 requires-python = ">=3.11"
 # Only what the code uses today. Add a dependency in the same PR that first imports it.
-# Intended stack for the rest (see README): FastAPI, LangGraph, the MCP SDK, Gemini
-# (google-genai), PostgreSQL + pgvector (psycopg).
+# Intended stack for the rest (see README): FastAPI, LangGraph, Gemini (google-genai).
 dependencies = [
     "httpx>=0.28.1",
+    "mcp>=2.1.1",  # the gateway server (Phase 2)
+    "psycopg[binary]>=3.2",  # PostgreSQL driver (Phase 2)
     "python-dotenv>=1.2.3",
 ]
 
@@ -20,6 +21,11 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.6",
 ]
+# A throwaway Postgres for the database tests when you have no Docker (see tests/conftest.py).
+embedded-db = ["pgserver"]
+
+[tool.setuptools.package-data]
+"cognipm.db" = ["migrations/*.sql"]
 
 [tool.setuptools.packages.find]
 include = ["cognipm*"]

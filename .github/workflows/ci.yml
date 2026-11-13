@@ -49,6 +49,24 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    # The database tests run against a real Postgres (same image as local Docker), never a mock.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: cognipm
+          POSTGRES_PASSWORD: cognipm
+          POSTGRES_DB: cognipm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cognipm"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://cognipm:cognipm@localhost:5432/cognipm
+      REQUIRE_DB: "1" # no database = a failure, never a silent skip
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -60,8 +78,6 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
-      # When a test needs PostgreSQL, add `services: postgres: image: pgvector/pgvector:pg16`
-      # to this job (with a health check) and set DATABASE_URL.
 
   # Single stable check name for the branch ruleset to require, so the ruleset
   # never has to change when jobs above are added, renamed, or skipped.

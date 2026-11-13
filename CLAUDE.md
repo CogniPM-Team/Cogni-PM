@@ -6,13 +6,15 @@ so and wait; do not quietly build around it.
 
 ## Current state
 
-Only the Jira client (`backend/cognipm/gateway/jira.py`) is implemented. Everything else is an empty,
-documented package or folder. Build the next piece; don't pre-build pieces nobody asked for.
+Implemented: the Jira client (`gateway/jira.py`), the Postgres schema (`db/`) and the mode-scoped MCP gateway
+(`gateway/server.py`, `apply.py`). The guardrail chain is empty; the orchestrator, API, RAG and frontend are
+empty, documented packages or folders. `docs/phases.md` is the build order. Build the next piece; don't
+pre-build pieces nobody asked for.
 
 ## The rule to never break
 
 **Autonomy is enforced by the tool layer, not the prompt.** What an agent may do is decided by which MCP tools
-the gateway registers for its level. Never put "ask permission first" in a prompt; put it in the gateway.
+the gateway registers for its mode (M1, M2 or M3). Never put "ask permission first" in a prompt; put it in the gateway.
 
 ## How to work
 

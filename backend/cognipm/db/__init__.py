@@ -1,5 +1,8 @@
-"""Database access (empty - the data model is still being decided; PostgreSQL + pgvector).
+"""Database access (PostgreSQL).
 
-Whatever is stored here, the audit trail must be append-only: enforce that in the database
-(a trigger), not by convention.
+  migrations/    numbered .sql files, applied once each by migrate.apply_migrations().
+  connection.py  connect() / get_connection() (the latter also applies pending migrations).
+  audit.py       log_audit(): appends to audit_log, which a trigger makes append-only.
+
+Schema changes go in a NEW numbered migration file; never edit one that has been merged.
 """
