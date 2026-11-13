@@ -11,47 +11,13 @@ import httpx
 import pytest
 
 from cognipm.gateway.jira import (
-    JiraClient,
     JiraConfig,
     JiraConfigError,
     _adf_to_text,
     _normalize_list,
     text_to_adf,
 )
-
-CONFIG = JiraConfig(
-    base_url="https://example.atlassian.net",
-    email="tester@example.com",
-    api_token="secret-token",
-    project_key="TEST",
-    story_points_field="customfield_10016",
-)
-
-
-def make_client(handler) -> tuple[JiraClient, list[httpx.Request]]:
-    """A JiraClient whose HTTP layer is `handler(request) -> httpx.Response`;
-    also returns every request it received."""
-    seen: list[httpx.Request] = []
-
-    def record(request: httpx.Request) -> httpx.Response:
-        seen.append(request)
-        return handler(request)
-
-    return JiraClient(CONFIG, transport=httpx.MockTransport(record)), seen
-
-
-def raw_issue(key="TEST-1", *, points=3.0, status_category="new", **extra) -> dict:
-    fields = {
-        "summary": f"Summary of {key}",
-        "status": {"name": "To Do", "statusCategory": {"key": status_category}},
-        "issuetype": {"name": "Story"},
-        "customfield_10016": points,
-        "duedate": "2026-12-01",
-        "labels": ["backend"],
-    }
-    fields.update(extra)
-    return {"key": key, "fields": fields}
-
+from tests.helpers import make_client, raw_issue
 
 # ---------- configuration ----------
 
