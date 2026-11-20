@@ -115,3 +115,19 @@ def test_a_failed_commit_marks_the_run_failed_and_keeps_the_token_for_a_retry(co
     assert created == []
     assert conn.execute("SELECT status FROM runs WHERE id = %s", (run_id,)).fetchone() == {"status": "failed"}
     assert conn.execute("SELECT consumed_at FROM approval_tokens").fetchone() == {"consumed_at": None}
+
+
+def test_an_approval_issued_before_a_draft_was_staged_does_not_cover_that_draft(env):
+    tools, run_id, seen, created, conn = env
+    token = issue_approval_token(conn, run_id)
+    conn.execute(  # a draft the approver never saw: the gateway would refuse it on a finished run
+        "INSERT INTO staged_changes (id, run_id, kind, payload, sources, reasoning) "
+        "VALUES ('late', %s, 'backlog_item', '{\"summary\": \"Added later\"}', '[\"q\"]', 'long enough reasoning')",
+        (run_id,),
+    )
+    conn.commit()
+
+    with pytest.raises(ValueError, match="staged after this approval was issued"):
+        tools.commit_changes(run_id, token)
+
+    assert posts(seen) == [] and created == []

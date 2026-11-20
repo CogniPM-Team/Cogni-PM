@@ -29,7 +29,7 @@ backend/
     gateway/jira.py     Jira Cloud REST client                           <- implemented and tested
     gateway/server.py   MCP gateway: mode-scoped tools (M1/M2/M3)       <- implemented and tested
     gateway/apply.py    the one place a draft becomes a Jira issue       <- implemented and tested
-    gateway/guardrails.py  validator chain (empty; Phase 4 fills it)
+    gateway/guardrails.py  the guardrail chain (nine rules)              <- implemented and tested
     orchestrator/       LangGraph runs (P1, P2, M1 chat), MCP client     <- implemented and tested
     api/                FastAPI routes for the frontend                  (to build)
     db/                 PostgreSQL schema, migrations, audit log         <- implemented and tested
@@ -58,6 +58,7 @@ pip install -e ".[dev]"
 pytest                                  # no network or credentials needed (see the database note below)
 python scripts/check_connection.py      # reads your real Jira site; changes nothing
 python scripts/demo_stage.py            # runs the gateway at M1, M2, M3 over stdio; reads Jira, writes nothing
+python scripts/demo_guardrails.py      # tries bad drafts against your real project: all refused, nothing created
 python scripts/demo_run.py              # a real Gemini P1 + P2 run (needs GEMINI_API_KEY; sends synthetic text)
 ```
 
@@ -74,7 +75,7 @@ themselves. With neither, the database tests are skipped locally and fail in CI.
 Read [docs/architecture.md](docs/architecture.md) first. The pieces are fairly independent:
 
 1. **MCP gateway** (`backend/cognipm/gateway/`): the heart of the project. Built: per-mode tool registration.
-   Next: the guardrail chain (Phase 4).
+   The guardrail chain is built; next is the API (Phase 5).
 2. **Database** (`backend/cognipm/db/`): built (runs, staged drafts, approval tokens, audit log).
 3. **API** (`backend/cognipm/api/`): the human's decisions: approve, reject, authorise.
 4. **Orchestrator** (`backend/cognipm/orchestrator/`): LangGraph, calling the gateway as an MCP client.

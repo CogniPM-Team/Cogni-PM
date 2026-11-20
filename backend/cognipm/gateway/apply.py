@@ -40,11 +40,14 @@ def apply_staged_changes(
     actor: str,
     mode: str | None,
     change_ids: list[str] | None = None,
+    automatic: bool = False,
 ) -> list[dict]:
     """Create a Jira issue for each not-yet-applied draft of `run_id` (or only `change_ids`).
 
     - Uses `edited_payload` when a human set one, `payload` otherwise (`payload` always
       stays what the agent proposed, so this is where "what actually happened" is decided).
+    - Runs the guardrail chain on each draft immediately before its write. `automatic` says no human is
+      approving this call (M3's commit_changes), which is what lets `external` actions be refused.
     - Creates parents before children, and records `created_issue_key` as it goes.
     - Refuses before writing anything if a draft's parent draft is neither in this batch
       nor already created (for example because the PM unticked it).
@@ -55,7 +58,7 @@ def apply_staged_changes(
     Returns one dict per created issue: change_id, kind, issue_key, url, was_edited.
     """
     rows = conn.execute(
-        "SELECT id, kind, payload, edited_payload, parent_change_id FROM staged_changes "
+        "SELECT id, kind, payload, edited_payload, parent_change_id, action_class FROM staged_changes "
         "WHERE run_id = %s AND status IN ('proposed', 'failed') "
         "AND (%s::text[] IS NULL OR id = ANY(%s::text[])) ORDER BY created_at, id",
         (run_id, change_ids, change_ids),
@@ -68,7 +71,9 @@ def apply_staged_changes(
     for position, change in enumerate(ordered):
         pending = [c["id"] for c in ordered[position:]]
         try:
-            issue = _create_one(jira, conn, change, run_id=run_id, actor=actor, mode=mode)
+            issue = _create_one(
+                jira, conn, change, run_id=run_id, actor=actor, mode=mode, automatic=automatic
+            )
         except Exception as exc:  # noqa: BLE001 - recorded, then re-raised as ApplyFailed with the full picture
             reason = describe_error(exc) if isinstance(exc, httpx.HTTPStatusError) else str(exc)
             conn.rollback()
@@ -107,10 +112,32 @@ def _require_parents_available(conn: psycopg.Connection, batch: dict[str, dict])
 
 
 def _create_one(
-    jira: JiraClient, conn: psycopg.Connection, change: dict, *, run_id: str, actor: str, mode: str | None
+    jira: JiraClient,
+    conn: psycopg.Connection,
+    change: dict,
+    *,
+    run_id: str,
+    actor: str,
+    mode: str | None,
+    automatic: bool,
 ) -> dict:
     payload = change["edited_payload"] if change["edited_payload"] is not None else change["payload"]
-    run_guardrails(conn, {"kind": change["kind"], "payload": payload}, run_id=run_id, actor=actor, mode=mode)
+    run_guardrails(
+        {
+            "kind": change["kind"],
+            "payload": payload,
+            "parent_change_id": change["parent_change_id"],
+            "action_class": change["action_class"],
+        },
+        jira=jira,
+        conn=conn,
+        run_id=run_id,
+        actor=actor,
+        mode=mode,
+        stage="apply",
+        automatic=automatic,
+        change_id=change["id"],
+    )
 
     if change["kind"] == "subtask":
         # The sub-task type's name varies per site, so find it by its flag, not by name.

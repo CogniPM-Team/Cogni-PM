@@ -288,6 +288,35 @@ structured error.
   acted on, and `max_items_per_run` limits the damage if a document tries to flood the backlog (H8).
 - Tests: one refusal test per guardrail, run at M1, M2 and M3.
 
+**Status (20 Nov): built and run live.** 167 tests pass against a real Postgres and ruff is clean.
+`scripts/demo_guardrails.py` ran against the real `MCP` site through the gateway's propose tools at M2: a
+sub-task under a parent in another project (`in_project_scope`), a backlog item titled like open issue MCP-4
+(`no_duplicate`), a sub-task under a parent that does not exist (`valid_parent`), and a Story with no acceptance
+criteria (`required_fields`) were each refused with the guardrail's name in the audit log, a well-formed draft
+passed the whole chain including Jira's own create metadata, and the project had 14 issues before and after.
+Decisions taken while building:
+- **Nine rules, cheapest first:** `required_fields`, `create_only`, `external_is_gated`, `max_items_per_run`,
+  `no_milestone_date_change`, `in_project_scope`, then the three that read Jira: `valid_parent`, `no_duplicate`,
+  `jira_required_fields`. A draft refused locally costs no Jira request. Each guardrail now receives a
+  `DraftContext` (Jira client, database, run, mode, stage, whether the call is automatic).
+- **`required_fields` is two rules.** The local one (title, and acceptance criteria for a Story) is
+  `required_fields`; the question to Jira ("which fields does this project require?", answered by the create
+  metadata, which I confirmed on the real site) is `jira_required_fields`, so a refusal names which one fired.
+- **Propose now reads Jira.** The rules need Jira's state, so a proposal makes a few read requests (an open-issue
+  search, the parent, the create metadata). It still never writes; the tests now assert "no create request"
+  rather than "no request".
+- **`no_duplicate` is deliberately simple:** exact title (ignoring case and spacing) against the 100 most
+  recently created open issues, plus other drafts in the same run. No model text is placed in a JQL string.
+- **`max_items_per_run`** defaults to 20 (`COGNIPM_MAX_ITEMS_PER_RUN`). At propose time it counts drafts, at apply
+  time it counts issues actually created.
+- **`external_is_gated`:** an `external` draft is refused when `commit_changes` (no person approving) tries to
+  apply it, and allowed when a human approves through the API. Nothing creates an `external` draft yet.
+- **Stale approvals:** `commit_changes` refuses a token if any draft was staged after the token was issued.
+  Token expiry was already enforced in Phase 2.
+- The ported milestone rule for changing an *existing* issue's due date (`check_no_milestone_date_change`) is
+  kept for Phase 8 and is not in the chain; `no_milestone_date_change` in the chain stops a draft that carries a
+  date on an Epic or a `milestone`-labelled issue.
+
 **Done when:** a live script tries an out-of-project create, a duplicate, and an orphan sub-task and shows each
 refused and logged, with Jira unchanged.
 

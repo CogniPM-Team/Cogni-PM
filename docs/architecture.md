@@ -134,25 +134,33 @@ flowchart TB
 Server-side validators in the gateway, applied identically at every mode. An agent never negotiates with a
 guardrail: the call is refused and the refusal is logged. Never implement a guardrail as a prompt instruction.
 
-They run **twice**: when a draft is proposed, and again immediately before each Jira write in `apply.py`, so
-an approval given earlier cannot get around a rule that has since been tightened.
+They run **twice**: when a draft is proposed, and again immediately before each Jira write in `apply.py`. Each
+rule reads Jira's state at that moment, so an approval given earlier cannot get around something that has since
+changed (a title someone created by hand in the meantime, a parent that was closed). The cheap local rules run
+first, so a bad draft usually costs no Jira request at all.
 
 ```mermaid
 flowchart LR
-    D["Draft or approved change"] --> G1["in_project_scope"]
+    D["Draft or approved change"] --> G1["required_fields<br/>title, story criteria"]
     G1 --> G2["create_only"]
-    G2 --> G3["valid_parent"]
-    G3 --> G4["no_duplicate"]
-    G4 --> G5["max_items_per_run"]
-    G5 --> G6["required_fields"]
-    G6 --> G7["milestone rule:<br/>no due-date change on<br/>an Epic or 'milestone' label"]
-    G7 -->|"all pass"| OK["Allowed"]
-    G1 & G2 & G3 & G4 & G5 & G6 & G7 -.->|"any fails"| NO["Refused and logged<br/>with the guardrail's name"]
+    G2 --> G3["external_is_gated"]
+    G3 --> G4["max_items_per_run"]
+    G4 --> G5["no_milestone_date_change"]
+    G5 --> G6["in_project_scope"]
+    G6 --> G7["valid_parent<br/>reads Jira"]
+    G7 --> G8["no_duplicate<br/>reads Jira"]
+    G8 --> G9["jira_required_fields<br/>reads Jira"]
+    G9 -->|"all pass"| OK["Allowed"]
+    G1 & G2 & G3 & G4 & G5 & G6 & G7 & G8 & G9 -.->|"any fails"| NO["Refused and logged<br/>with the guardrail's name"]
 ```
 
-The chain is empty except for the milestone rule until Phase 4 fills it in. Each staged change also carries an
-**action class** (`read`, `internal`, `structural`, `external`). Creating issues is `structural`; `external` is
-always gated, in every mode.
+Each staged change carries an **action class** (`read`, `internal`, `structural`, `external`). Creating issues is
+`structural`. `external` is never committed automatically: `external_is_gated` refuses it when no person is
+approving (M3's `commit_changes`), at every mode. An approval is also tied to the drafts that existed when it was
+issued: a draft staged afterwards is not covered, and `commit_changes` refuses.
+
+Known limit: `no_duplicate` compares exact titles (ignoring case and spacing) against the 100 most recently
+created open issues, so near-duplicates and older issues get through. Tune it on real runs.
 
 ## How a write reaches Jira
 
@@ -295,7 +303,7 @@ study measures edit rate, rejection rate and time to decision.
 | Path | Holds | Phase |
 |---|---|---|
 | `backend/cognipm/gateway/jira.py` | Jira REST client, ADF helpers, key validation | 1 (built) |
-| `backend/cognipm/gateway/server.py`, `apply.py`, `guardrails.py` | Mode-scoped MCP tools, the one Jira write path, the (empty) guardrail chain | 2 (built) |
+| `backend/cognipm/gateway/server.py`, `apply.py`, `guardrails.py` | Mode-scoped MCP tools, the one Jira write path, the guardrail chain | 2 and 4 (built) |
 | `backend/cognipm/db/` | Postgres schema, migrations, `log_audit()` | 2 (built) |
 | `backend/cognipm/orchestrator/` | LangGraph runs (P1, P2, M1 chat) that call the gateway over stdio | 3 (built) |
 | `backend/cognipm/api/` | FastAPI control-plane API | 5 |

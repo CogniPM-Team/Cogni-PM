@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 
 from cognipm.gateway.server import GatewayTools
-from tests.helpers import fake_jira
+from tests.helpers import creates, fake_jira
 
 REASONING = "The notes ask for this explicitly, twice."
 SOURCES = ["Users must be able to reset their password by email."]
@@ -64,7 +64,7 @@ def test_a_backlog_draft_is_staged_with_its_sources_and_never_touches_jira(env):
     assert row["sources"] == SOURCES
     assert row["action_class"] == "structural"
     assert row["created_issue_key"] is None
-    assert seen == []  # no request of any kind reached Jira
+    assert creates(seen) == []  # it read Jira to check the rules, but created nothing
     audit = conn.execute(
         "SELECT actor, mode, outcome FROM audit_log WHERE action = 'propose_backlog_item'"
     ).fetchone()
@@ -122,12 +122,14 @@ def test_a_subtask_can_hang_under_an_existing_story_or_a_draft_in_the_same_run(e
     parent_draft = backlog_item(tools, run_id)
 
     under_key = subtask(tools, run_id)
-    under_draft = subtask(tools, run_id, parent_key=None, parent_change_id=parent_draft)
+    under_draft = subtask(
+        tools, run_id, summary="Expire the link", parent_key=None, parent_change_id=parent_draft
+    )
 
     rows = {r["id"]: r for r in conn.execute("SELECT * FROM staged_changes").fetchall()}
     assert rows[under_key]["kind"] == "subtask" and rows[under_key]["payload"]["parent_key"] == "TEST-1"
     assert rows[under_draft]["parent_change_id"] == parent_draft
-    assert seen == []
+    assert creates(seen) == []
 
 
 @pytest.mark.parametrize(

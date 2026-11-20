@@ -50,16 +50,46 @@ def raw_issue(key="TEST-1", *, points=3.0, status_category="new", **extra) -> di
     return {"key": key, "fields": fields}
 
 
-def issue_creating_site(*, fail_on_summary: str | None = None, first_number: int = 100):
-    """A fake Jira that accepts issue creation: GET /project/TEST lists the issue types and each
-    POST /issue gets the next key (TEST-100, TEST-101, ...). A summary equal to `fail_on_summary`
-    is refused with a 400. Returns (handler, created) where `created` collects the POSTed fields."""
+def issue_creating_site(
+    *,
+    fail_on_summary: str | None = None,
+    first_number: int = 100,
+    open_issues: dict[str, str] | None = None,
+    existing: dict[str, dict] | None = None,
+    required: list[dict] | None = None,
+):
+    """A fake Jira, enough for proposing and creating drafts:
+
+    - GET /project/TEST lists the issue types; GET .../createmeta lists the required fields
+      (summary, issuetype, project, plus `required` extras such as {"key": "customfield_9", "name": "Team"}).
+    - POST /search/jql returns `open_issues` ({key: summary}) - what the duplicate check compares against.
+    - GET /issue/<key> answers for the keys in `existing` ({key: raw-issue overrides}; TEST-1 by default).
+    - Each POST /issue gets the next key (TEST-100, TEST-101, ...). A summary equal to `fail_on_summary`
+      is refused with a 400.
+
+    Returns (handler, created) where `created` collects the POSTed issue fields."""
     created: list[dict] = []
+    known = {"TEST-1": {}} if existing is None else existing
+    meta = [
+        {"key": k, "name": k.title(), "required": True, "hasDefaultValue": False}
+        for k in ("summary", "issuetype", "project")
+    ] + [{**f, "required": True, "hasDefaultValue": False} for f in (required or [])]
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.method == "GET" and request.url.path == "/rest/api/3/project/TEST":
+        path = request.url.path
+        if request.method == "GET" and path == "/rest/api/3/project/TEST":
             return httpx.Response(200, json={"key": "TEST", "issueTypes": ISSUE_TYPES})
-        if request.method == "POST" and request.url.path == "/rest/api/3/issue":
+        if request.method == "GET" and "/createmeta/" in path:
+            return httpx.Response(200, json={"fields": meta})
+        if request.method == "POST" and path == "/rest/api/3/search/jql":
+            issues = [raw_issue(k, summary=v) for k, v in (open_issues or {}).items()]
+            return httpx.Response(200, json={"issues": issues})
+        if request.method == "GET" and path.startswith("/rest/api/3/issue/"):
+            key = path.rsplit("/", 1)[-1]
+            if key in known:
+                return httpx.Response(200, json=raw_issue(key, **known[key]))
+            return httpx.Response(404, json={"errorMessages": ["Issue does not exist"]})
+        if request.method == "POST" and path == "/rest/api/3/issue":
             fields = json.loads(request.content)["fields"]
             if fields["summary"] == fail_on_summary:
                 return httpx.Response(
@@ -68,9 +98,7 @@ def issue_creating_site(*, fail_on_summary: str | None = None, first_number: int
             created.append(fields)
             number = first_number + len(created) - 1
             return httpx.Response(201, json={"id": str(10000 + number), "key": f"TEST-{number}"})
-        return httpx.Response(
-            404, json={"errorMessages": [f"unexpected {request.method} {request.url.path}"]}
-        )
+        return httpx.Response(404, json={"errorMessages": [f"unexpected {request.method} {path}"]})
 
     return handler, created
 
@@ -82,6 +110,9 @@ def fake_jira(**site_options):
     return client, seen, created
 
 
-def posts(seen) -> list[httpx.Request]:
-    """The requests that tried to create an issue."""
-    return [r for r in seen if r.method == "POST"]
+def creates(seen) -> list[httpx.Request]:
+    """The requests that tried to create an issue - the only writes there are."""
+    return [r for r in seen if r.method == "POST" and r.url.path == "/rest/api/3/issue"]
+
+
+posts = creates  # the name the older tests use

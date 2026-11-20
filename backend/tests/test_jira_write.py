@@ -323,3 +323,37 @@ def test_draft_to_adf_puts_acceptance_criteria_under_a_heading_as_a_list():
 def test_draft_to_adf_omits_the_heading_when_there_are_no_criteria():
     assert [n["type"] for n in draft_to_adf("Just a description")["content"]] == ["paragraph"]
     assert [n["type"] for n in draft_to_adf("", ["Only criteria"])["content"]] == ["heading", "bulletList"]
+
+
+# ---------- what Jira requires to create an issue ----------
+
+
+def createmeta_site(fields):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/rest/api/3/project/TEST":
+            return httpx.Response(200, json={"key": "TEST", "issueTypes": ISSUE_TYPES})
+        if "/createmeta/" in request.url.path:
+            return httpx.Response(200, json={"fields": fields})
+        return httpx.Response(404, json={"errorMessages": ["unexpected"]})
+
+    return handler
+
+
+def test_required_fields_lists_only_what_jira_insists_on_and_gives_no_default_for():
+    client, seen = make_client(
+        createmeta_site(
+            [
+                {"key": "summary", "name": "Summary", "required": True, "hasDefaultValue": False},
+                {"key": "priority", "name": "Priority", "required": True, "hasDefaultValue": True},
+                {"key": "customfield_10042", "name": "Team", "required": True, "hasDefaultValue": False},
+                {"key": "labels", "name": "Labels", "required": False, "hasDefaultValue": False},
+            ]
+        )
+    )
+
+    assert client.required_fields("Story") == [
+        {"key": "summary", "name": "Summary"},
+        {"key": "customfield_10042", "name": "Team"},
+    ]
+    client.required_fields("story")  # asked again: answered from the cache
+    assert [r.url.path.rsplit("/", 1)[-1] for r in seen].count("10001") == 1

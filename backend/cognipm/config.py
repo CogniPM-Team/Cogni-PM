@@ -29,3 +29,9 @@ def database_url() -> str:
 
 def orchestrator_model() -> str:
     return os.environ.get("ORCHESTRATOR_MODEL", "gemini-3.6-flash")
+
+
+def max_items_per_run() -> int:
+    """How many issues one run may stage or create, so a bad run (or a hostile document) cannot flood
+    the backlog. Read at call time so tests can change it."""
+    return int(os.environ.get("COGNIPM_MAX_ITEMS_PER_RUN", "20"))

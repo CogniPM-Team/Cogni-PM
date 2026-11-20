@@ -4,14 +4,13 @@ quote that is not in the input, a malformed draft, and a mode that has no start_
 
 from __future__ import annotations
 
-import httpx
 import pytest
 
 from cognipm.gateway.jira import text_to_adf
 from cognipm.gateway.server import build_server
 from cognipm.orchestrator.tasks import OrchestratorError, run_task
 from tests.fake_gemini import FakeGemini, backlog_item, drafts_reply, raw_text_reply, subtask
-from tests.helpers import make_client, raw_issue
+from tests.helpers import creates, issue_creating_site, make_client
 
 NOTES = (
     "Meeting 12 Nov. Customers keep asking to reset their password by email.\n"
@@ -23,16 +22,13 @@ STORY_TEXT = "Users can reset their password. They request a link by email and i
 
 
 def jira_site(*, story_description: str | None = STORY_TEXT):
-    """Canned Jira for the read tools the orchestrator uses."""
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.method == "POST" and request.url.path == "/rest/api/3/search/jql":
-            return httpx.Response(200, json={"issues": [raw_issue("TEST-1"), raw_issue("TEST-2")]})
-        if request.method == "GET" and request.url.path == "/rest/api/3/issue/TEST-1":
-            extra = {} if story_description is None else {"description": text_to_adf(story_description)}
-            return httpx.Response(200, json=raw_issue("TEST-1", summary="Reset password", **extra))
-        return httpx.Response(404, json={"errorMessages": ["unexpected"]})
-
+    """Canned Jira: two open issues, and TEST-1 as the story P2 breaks down."""
+    story = {"summary": "Reset password"}
+    if story_description is not None:
+        story["description"] = text_to_adf(story_description)
+    handler, _ = issue_creating_site(
+        open_issues={"TEST-1": "Summary of TEST-1", "TEST-2": "Summary of TEST-2"}, existing={"TEST-1": story}
+    )
     return handler
 
 
@@ -76,7 +72,7 @@ async def test_p1_stages_a_cited_draft_per_item_and_never_touches_jira(env):
     assert run["status"] == "awaiting_review" and run["task_type"] == "p1"
     assert run["agent"] == "orchestrator:test"
     assert (run["model"], run["input_tokens"], run["output_tokens"]) == ("gemini-3.6-flash", 100, 50)
-    assert seen == []  # no request of any kind reached Jira
+    assert creates(seen) == []  # it read Jira to check the rules, but created nothing
 
 
 async def test_p1_records_every_step_in_order_so_a_restart_can_replay_it(env):
@@ -218,7 +214,7 @@ async def test_p2_breaks_an_existing_story_into_subtasks_under_it(env):
     assert all(r["payload"]["parent_key"] == "TEST-1" for r in rows)
     assert run_row(conn)["task_type"] == "p2" and run_row(conn)["scope"] == "story TEST-1"
     assert "Reset password" in gemini.prompts[0] and quote in gemini.prompts[0]
-    assert [r.method for r in seen] == ["GET"]  # it only read the story
+    assert creates(seen) == []  # it read the story and checked the rules, nothing more
 
 
 async def test_p2_cannot_cite_text_that_is_not_in_the_story(env):

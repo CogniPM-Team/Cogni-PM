@@ -228,6 +228,7 @@ class JiraClient:
             transport=transport,
         )
         self._issue_types: list[IssueType] | None = None
+        self._required_fields: dict[str, list[dict]] = {}
 
     def close(self) -> None:
         self._client.close()
@@ -376,6 +377,23 @@ class JiraClient:
         raise ValueError(
             f"No issue type named {name!r} in project {self.config.project_key}. Available: {available}"
         )
+
+    def required_fields(self, issue_type: str) -> list[dict]:
+        """Fields Jira insists on when creating `issue_type` in this project and gives no default for,
+        as [{"key": ..., "name": ...}]. Differs per project and issue type (custom required fields are
+        the usual reason a create is refused), so it is read from Jira, once per type per client."""
+        issue_type_id = self.issue_type(issue_type).id
+        if issue_type_id not in self._required_fields:
+            meta = self._request(
+                "GET",
+                f"/rest/api/{API_VERSION}/issue/createmeta/{self.config.project_key}/issuetypes/{issue_type_id}",
+            ).json()
+            self._required_fields[issue_type_id] = [
+                {"key": f["key"], "name": f.get("name", f["key"])}
+                for f in meta.get("fields", [])
+                if f.get("required") and not f.get("hasDefaultValue")
+            ]
+        return self._required_fields[issue_type_id]
 
     def create_issue(
         self,

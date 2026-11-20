@@ -5,9 +5,8 @@
                  single TOOLS_BY_MODE table - a mode that must not write simply never receives the
                  write tools. This is the whole enforcement mechanism.
   apply.py       The one place a staged draft becomes a real Jira issue (parents first).
-  guardrails.py  Server-side validators every write path passes through. The chain is empty until
-                 Phase 4; the milestone rule is ported and waiting for a tool that sets dates.
-                 Never a prompt instruction.
+  guardrails.py  Server-side validators every write path passes through, at propose time and again
+                 just before the Jira write. Never a prompt instruction.
 
 Run it by hand: COGNIPM_MODE=M2 python -m cognipm.gateway.server (or use the repo's .mcp.json).
 """

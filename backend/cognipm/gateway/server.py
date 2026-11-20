@@ -29,7 +29,7 @@ from cognipm.config import TOKEN_TTL_MINUTES
 from cognipm.db.audit import log_audit
 from cognipm.db.connection import get_connection
 from cognipm.gateway.apply import ApplyFailed, apply_staged_changes
-from cognipm.gateway.guardrails import GuardrailViolation
+from cognipm.gateway.guardrails import GuardrailViolation, run_guardrails
 from cognipm.gateway.jira import MAX_SUMMARY_LENGTH, Issue, JiraClient, describe_error, validate_issue_key
 
 DEFAULT_AGENT = "planning"
@@ -247,13 +247,15 @@ class GatewayTools:
         expired, already consumed, or for a different run."""
         with self._lock:
             token_row = self.conn.execute(
-                "SELECT run_id, expires_at, consumed_at FROM approval_tokens WHERE token = %s",
+                "SELECT run_id, issued_at, expires_at, consumed_at FROM approval_tokens WHERE token = %s",
                 (approval_token,),
             ).fetchone()
             self._require_valid_token(token_row, run_id)
 
             try:
-                applied = apply_staged_changes(self.jira, self.conn, run_id, actor=self.actor, mode=self.mode)
+                applied = apply_staged_changes(
+                    self.jira, self.conn, run_id, actor=self.actor, mode=self.mode, automatic=True
+                )
             except ApplyFailed as failure:
                 # The token stays unconsumed so a retry can create what is left.
                 self.conn.execute("UPDATE runs SET status = 'failed' WHERE id = %s", (run_id,))
@@ -301,6 +303,21 @@ class GatewayTools:
         assumptions: str,
         action: str,
     ) -> str:
+        # The same chain runs again, against Jira's state at that moment, just before the write.
+        run_guardrails(
+            {
+                "kind": kind,
+                "payload": payload,
+                "parent_change_id": parent_change_id,
+                "action_class": "structural",
+            },
+            jira=self.jira,
+            conn=self.conn,
+            run_id=run_id,
+            actor=self.actor,
+            mode=self.mode,
+            stage="propose",
+        )
         change_id = str(uuid.uuid4())
         self.conn.execute(
             "INSERT INTO staged_changes (id, run_id, kind, payload, parent_change_id, sources, reasoning, assumptions) "
@@ -354,6 +371,12 @@ class GatewayTools:
             self._refuse_commit(run_id, "approval_token has already been consumed")
         if token_row["expires_at"] < datetime.now(UTC):
             self._refuse_commit(run_id, "approval_token has expired")
+        stale = self.conn.execute(
+            "SELECT 1 FROM staged_changes WHERE run_id = %s AND status IN ('proposed', 'failed') AND created_at > %s",
+            (run_id, token_row["issued_at"]),
+        ).fetchone()
+        if stale:
+            self._refuse_commit(run_id, "a draft was staged after this approval was issued; approve again")
 
     def _refuse_commit(self, run_id: str, reason: str) -> None:
         log_audit(
