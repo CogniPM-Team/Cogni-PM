@@ -30,7 +30,7 @@ backend/
     gateway/server.py   MCP gateway: mode-scoped tools (M1/M2/M3)       <- implemented and tested
     gateway/apply.py    the one place a draft becomes a Jira issue       <- implemented and tested
     gateway/guardrails.py  validator chain (empty; Phase 4 fills it)
-    orchestrator/       LangGraph agent runs, MCP client                 (to build)
+    orchestrator/       LangGraph runs (P1, P2, M1 chat), MCP client     <- implemented and tested
     api/                FastAPI routes for the frontend                  (to build)
     db/                 PostgreSQL schema, migrations, audit log         <- implemented and tested
     rag/                embeddings + pgvector retrieval                  (to build)
@@ -58,6 +58,7 @@ pip install -e ".[dev]"
 pytest                                  # no network or credentials needed (see the database note below)
 python scripts/check_connection.py      # reads your real Jira site; changes nothing
 python scripts/demo_stage.py            # runs the gateway at M1, M2, M3 over stdio; reads Jira, writes nothing
+python scripts/demo_run.py              # a real Gemini P1 + P2 run (needs GEMINI_API_KEY; sends synthetic text)
 ```
 
 **Database.** The tests and the gateway need PostgreSQL. Either start one and point `DATABASE_URL` at it

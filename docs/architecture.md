@@ -3,7 +3,7 @@
 The decisions below are settled; they come from a working prototype and the Phase 0 decisions in
 `phases.md`. If you think one is wrong, say so in a PR or issue rather than quietly building around it.
 
-Status: the Jira client, the Postgres schema and the mode-scoped gateway are built (Phases 1 and 2). The
+Status: the Jira client, the Postgres schema, the mode-scoped gateway and the orchestrator are built (Phases 1 to 3). The
 diagrams show the target design; each box is labelled with the phase in `phases.md` that builds it.
 
 ## What this is, and is not
@@ -297,10 +297,25 @@ study measures edit rate, rejection rate and time to decision.
 | `backend/cognipm/gateway/jira.py` | Jira REST client, ADF helpers, key validation | 1 (built) |
 | `backend/cognipm/gateway/server.py`, `apply.py`, `guardrails.py` | Mode-scoped MCP tools, the one Jira write path, the (empty) guardrail chain | 2 (built) |
 | `backend/cognipm/db/` | Postgres schema, migrations, `log_audit()` | 2 (built) |
-| `backend/cognipm/orchestrator/` | LangGraph agent that calls the gateway over stdio | 3 |
+| `backend/cognipm/orchestrator/` | LangGraph runs (P1, P2, M1 chat) that call the gateway over stdio | 3 (built) |
 | `backend/cognipm/api/` | FastAPI control-plane API | 5 |
 | `backend/cognipm/automations/` | M3 automations: grants, poll scheduler, undo | 8 |
 | `frontend/src/` | React app: Agent console, Approvals, Activity log | 6 |
+
+## Known gaps and RAG
+
+`docs/phases.md` has a "Hardening and gaps" section (H1 to H14) listing what a real practitioner would hit and
+the phase that fixes each. The ones that change the design are:
+
+- **Creates must be idempotent.** Each issue is stamped with its draft id and `apply.py` checks for the stamp
+  before creating, so a retry never produces a duplicate (H1). Every created issue also carries the label
+  `cognipm-drafted` and a provenance comment (H2).
+- **RAG is optional and must not confound the study.** It would be a read-only `search_knowledge` gateway tool,
+  present at every mode, and drafts would cite retrieved passages labelled "from history". It is kept identical
+  across compared conditions, or off during evaluation, because better drafts would otherwise change edit rate
+  for reasons unrelated to the oversight mode.
+- **The review screen is a research instrument.** Review fatigue is the main risk of human oversight, so the UI
+  highlights cited quotes, flags assumptions, requires explicit ticks, and records time per decision (H6).
 
 ## Jira specifics that will bite you
 

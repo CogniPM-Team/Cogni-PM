@@ -50,3 +50,26 @@ def test_an_unknown_mode_is_rejected(conn, mode):
     jira, _ = make_client(lambda request: None)
     with pytest.raises(ValueError, match="Unknown mode"):
         build_server(mode, jira=jira, conn=conn)
+
+
+async def test_the_reason_for_a_refusal_reaches_the_caller_so_it_can_fix_the_draft(conn):
+    from mcp.client import Client
+
+    jira, _ = make_client(lambda request: None)
+    async with Client(build_server("M2", jira=jira, conn=conn)) as client:
+        started = await client.call_tool("start_run", {"task_type": "p1", "scope": "notes"})
+        refused = await client.call_tool(
+            "propose_backlog_item",
+            {
+                "run_id": started.structured_content["result"],
+                "summary": "A story",
+                "description": "d",
+                "acceptance_criteria": ["c"],
+                "reasoning": "too short",
+                "assumptions": "NA",
+                "sources": ["quote"],
+            },
+        )
+
+    assert refused.is_error
+    assert "reasoning must be at least 20 characters" in refused.content[0].text

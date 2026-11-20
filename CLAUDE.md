@@ -6,9 +6,9 @@ so and wait; do not quietly build around it.
 
 ## Current state
 
-Implemented: the Jira client (`gateway/jira.py`), the Postgres schema (`db/`) and the mode-scoped MCP gateway
-(`gateway/server.py`, `apply.py`). The guardrail chain is empty; the orchestrator, API, RAG and frontend are
-empty, documented packages or folders. `docs/phases.md` is the build order. Build the next piece; don't
+Implemented: the Jira client (`gateway/jira.py`), the Postgres schema (`db/`), the mode-scoped MCP gateway
+(`gateway/server.py`, `apply.py`) and the orchestrator (`orchestrator/`: P1, P2 and the M1 chat). The guardrail
+chain is empty; the API, RAG and frontend are empty, documented packages or folders. `docs/phases.md` is the build order. Build the next piece; don't
 pre-build pieces nobody asked for.
 
 ## The rule to never break

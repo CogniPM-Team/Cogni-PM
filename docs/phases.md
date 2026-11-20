@@ -224,6 +224,30 @@ docs/architecture.md to match.
 (then P2 on one approved story) and prints the staged drafts with their cited sources, with Jira unchanged. Use
 only synthetic or anonymised input: the paper's Privacy Act row says project data sent to the model is sandboxed.
 
+**Status (20 Nov): built and run live.** 125 tests pass against a real Postgres and ruff is clean. The first live
+attempt on 13 Nov failed with HTTP 402 (prepaid credits depleted); the error was reported and Jira was unchanged.
+After a top-up, `python scripts/demo_run.py` passed: P1 over the synthetic planning notes staged two drafts
+(password reset by email; monthly CSV export of paid and overdue invoices), each with acceptance criteria,
+assumptions and verbatim quotes, and correctly left out the dark theme nobody committed to. P2 on MCP-4 staged
+three sub-tasks. The project had 14 issues before and after, and `run_steps` replayed each run. Token use was
+593 in / 373 out for P1 and 183 in / 261 out for P2. Observation: P2 sub-tasks on a one-line story all cite the
+same sentence, so P2 quality depends on how much the story says. Decisions taken while building:
+- **Tasks are a fixed graph, not a model-driven tool loop.** `open_run -> analyse -> generate -> verify ->
+  stage`. Gemini has no tools in P1/P2; it returns JSON checked against a Pydantic schema (`schemas.py`), and
+  this code calls the gateway (`start_run`, `propose_*`, `finish_run`) over MCP. The mode still decides what is
+  possible: a run at M1 cannot begin because `start_run` does not exist. The model-driven tool loop is kept only
+  for the M1 chat (`chat.py`). The prototype's stall nudge was dropped because nothing needs the model to call
+  `finish_run` any more.
+- **Quotes are checked, not trusted.** Each cited passage must appear in the input (ignoring case, whitespace and
+  typographic quotes). A draft with no verifiable quote is dropped; if nothing survives the model gets one retry
+  with the problems listed; after that the run fails and stages nothing.
+- **Run states** are recorded as `run_steps` rows (`analysing`, `generating`, `verifying`, `staging`; migration
+  0002) rather than new `runs.status` values. `queued` belongs to the API in Phase 5.
+- **Fix to Phase 2:** the MCP server hides the text of any exception a tool raises, so a refusal ("reasoning must
+  be at least 20 characters") never reached the caller. The gateway now turns its deliberate refusals into
+  `ToolError` so the agent can see why, while real crashes stay masked.
+- New dependencies: `google-genai`, `langgraph`, and `pytest-asyncio` (dev).
+
 **Suggested commit message**
 
 ```
@@ -259,6 +283,9 @@ structured error.
   `structural` or `external`. Creating issues is `structural`. `external` is always gated, in every mode
   including M3; this is the hard floor Phase 8 relies on.
 - Approval tokens expire; an expired or stale approval never executes.
+- `required_fields` also asks Jira which fields the project requires when creating each issue type, and refuses
+  a draft that cannot satisfy them, with a clear message (H5). Instructions found inside the input text are never
+  acted on, and `max_items_per_run` limits the damage if a document tries to flood the backlog (H8).
 - Tests: one refusal test per guardrail, run at M1, M2 and M3.
 
 **Done when:** a live script tries an out-of-project create, a duplicate, and an orphan sub-task and shows each
@@ -291,6 +318,10 @@ The human's decisions live here, not in the gateway: approving is what writes to
 - `GET /audit` with filters (all, changed Jira, needs you, rejected, advice only), `GET /modes` generated from the
   tool table so the UI cannot drift from what the gateway enforces.
 - Approve goes through `apply.py` only, issues and consumes a token for audit parity, and is idempotent.
+- **Duplicate-create safety (see "Hardening and gaps", H1):** `apply.py` stamps every issue it creates with its
+  draft id and checks for that stamp before creating, so a retry after a crash never makes a second issue.
+- **Provenance in Jira (H2):** every created issue gets the label `cognipm-drafted` and a comment naming the run,
+  the mode, and who approved (`add_comment` already exists).
 - Export the OpenAPI schema and generate TypeScript types for `frontend/src/api/`.
 - Tests: approving twice is refused (no duplicate issues); reject never writes; editing an applied change is
   refused; a Jira failure halfway through a batch reports exactly which items were created and which were not.
@@ -336,6 +367,9 @@ in the UI, not the canvas's L1 to L4 labels.
 **6c. Approvals**
 - Pending runs first, oldest first. Detail pane: action class, mode, rationale, assumptions, the full draft
   (there is no current value to diff against), the cited source passages beside it, expiry.
+- **Designed against review fatigue (H6):** each draft's cited quote is highlighted inside the original input,
+  assumptions are flagged, nothing is ticked by default (no "approve all" shortcut), and time to decision is
+  recorded per run. This screen is a research instrument as much as a feature.
 - A checkbox per draft so the PM can approve only some; editable fields (title, description, acceptance
   criteria, parent) with the edit shown as a before/after in the audit log.
 - Actions: **Approve and execute**, **Edit before approving**, **Regenerate** (with a note), **Reject** (with a
@@ -511,6 +545,17 @@ task breakdown, and the story-point estimator that Phase 8 first builds as an au
 capped by the task's mode; agent trace in the console. pgvector retrieval over past runs and PM feedback so
 proposals cite sources and learn from rejections (stored feedback, not retraining).
 
+**RAG scope and the rule that keeps the study clean.** Large inputs do not need RAG: Gemini's context window
+holds a requirements document whole, and chunking it would lower draft quality. RAG is for two things only:
+retrieving similar past stories, conventions and definition-of-done rules so drafts match the team's style, and
+retrieving PM edits and rejection notes so the agent repeats fewer mistakes. Build it as a read-only
+`search_knowledge` gateway tool (present at every mode, so it sits inside the same enforcement), and let a draft
+cite retrieved passages labelled "from history" rather than "from input". **Keep RAG identical across every
+condition the study compares, or off during evaluation.** If it improves drafts, edit rate improves, and the
+study could not tell whether oversight or retrieval caused it. Before building a vector store, try the cheaper
+step: put the project's definition of done and a few approved example stories in the prompt (P1 already shows the
+model the existing backlog through `context_jql`).
+
 *Suggested commit messages* (two PRs):
 
 ```
@@ -540,6 +585,30 @@ Seed a demo Jira project and log the study metrics (time to decision,
 edit rate, rejection rate, overrides). Add participant onboarding and
 freeze features before FIT4702 starts.
 ```
+
+---
+
+## Hardening and gaps
+
+What a real practitioner would hit that the phases above do not yet cover, from a review on 16 Nov. Each item
+says why it matters and where it is scheduled. **Before any real user touches the system, H1 to H6 must be done.**
+
+| # | Gap | Why it matters | Scheduled in |
+|---|---|---|---|
+| H1 | **Duplicate creates** | A crash or retry between "Jira created the issue" and "the database recorded it" leaves an orphan, and the retry makes a second issue. Stamp each issue with its draft id (a label or issue property) and look for it before creating. | Phase 5 (`apply.py`) |
+| H2 | **AI provenance in Jira** | Jira's history shows only the API user, so teammates cannot tell which issues the AI drafted. Add the label `cognipm-drafted` and a comment with run, mode and approver. | Phase 5 |
+| H3 | **Login and attribution** | The API has no login: anyone who can reach it can approve a write, and every Jira write comes from one shared token. Add login and roles; decide between a shared bot user and per-user OAuth (3LO) so the approving PM is on record. | Phase 7 |
+| H4 | **Privacy and consent** | Project text goes to Gemini and sits in our audit log. Needs participant consent, redaction of personal data before the model call, a retention policy for run text and logs, and agreement with the ethics application (the paper's Privacy Act row). Only synthetic or anonymised data until then. | Phase 10, but design in Phase 5 |
+| H5 | **Jira variety** | Create fails on required custom fields; issue-type schemes, team-managed vs company-managed projects, and epic/parent rules differ; 429 rate limits need retry with backoff; search needs pagination. Surface "Jira rejected this because..." in the UI instead of a generic failure. | Phase 4 (required-field check), Phase 5 (retry) |
+| H6 | **Review fatigue** | A batch of 30 drafts invites rubber-stamping, which is the central risk of human oversight and the thing the paper studies. Highlight each draft's cited quote in the input, flag assumptions, require explicit ticks (no "approve all" default), and record time per decision. Treat the review screen as a research instrument. | Phase 6 |
+| H7 | **Durable runs and model failures** | A run is an in-process async job, so a restart loses it mid-flight. Gemini 429, timeouts and exhausted credit (seen on 13 Nov, HTTP 402) need bounded retries and a readable message in the UI. Move runs to a persisted queue. | Phase 5 |
+| H8 | **Prompt injection from input** | Meeting notes may say "ignore the above". The tool layer still blocks any write the mode does not allow, but drafts could be skewed. Keep `max_items_per_run`, always show provenance, and never act on instructions inside the input. | Phase 4 |
+| H9 | **Quality regression** | There is no ground truth. Build a golden set of notes with expected stories and run it on every prompt or model change. Pin the model version (aliases drift) and store a prompt version on each run. | Phase 9, needed for Phase 10 |
+| H10 | **Least privilege** | Use a dedicated Jira bot user with only Browse and Create permissions. The current user already cannot delete issues, which is the right direction. Keep secrets only in `.env`. | Setup, before Phase 10 |
+| H11 | **Observability and backup** | Structured logs, cost per run, a health endpoint, and DB backups. A database administrator can drop the audit trigger, so back up the audit log and consider hash-chaining rows. | Phase 7 |
+| H12 | **Input formats** | Practitioners have PDFs, Word files and meeting transcripts, not pasted text. Add upload with size limits and text extraction. | Phase 6 or 7 |
+| H13 | **Notifications** | A PM should be told when a run awaits review (email or Slack). | After the MVP |
+| H14 | **Out of scope for now** | SSO, multiple projects, Jira Data Center or Server, localisation, mobile layout. Write them down so the limits are explicit in the report. | Report |
 
 ---
 

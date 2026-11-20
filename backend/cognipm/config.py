@@ -25,3 +25,7 @@ TOKEN_TTL_MINUTES = 15
 def database_url() -> str:
     """Read at call time, not import time, so tests can monkeypatch the environment."""
     return os.environ.get("DATABASE_URL", "postgresql://cognipm:cognipm@localhost:5432/cognipm")
+
+
+def orchestrator_model() -> str:
+    return os.environ.get("ORCHESTRATOR_MODEL", "gemini-3.6-flash")

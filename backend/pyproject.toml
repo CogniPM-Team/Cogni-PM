@@ -8,10 +8,12 @@ version = "0.1.0"
 description = "CogniPM backend: Jira client, Postgres schema and mode-scoped MCP gateway; orchestrator and API to come"
 requires-python = ">=3.11"
 # Only what the code uses today. Add a dependency in the same PR that first imports it.
-# Intended stack for the rest (see README): FastAPI, LangGraph, Gemini (google-genai).
+# Intended stack for the rest (see README): FastAPI.
 dependencies = [
+    "google-genai>=2.22.0",  # Gemini, the orchestrator's model (Phase 3)
     "httpx>=0.28.1",
-    "mcp>=2.1.1",  # the gateway server (Phase 2)
+    "langgraph>=1.0",  # the orchestrator's graphs (Phase 3)
+    "mcp>=2.1.1",  # the gateway server (Phase 2) and the orchestrator's client (Phase 3)
     "psycopg[binary]>=3.2",  # PostgreSQL driver (Phase 2)
     "python-dotenv>=1.2.3",
 ]
@@ -19,6 +21,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",  # the orchestrator is async (Phase 3)
     "ruff>=0.6",
 ]
 # A throwaway Postgres for the database tests when you have no Docker (see tests/conftest.py).
@@ -32,6 +35,7 @@ include = ["cognipm*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 110

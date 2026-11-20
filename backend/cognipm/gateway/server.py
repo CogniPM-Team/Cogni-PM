@@ -13,20 +13,24 @@ stdout - stdio is the MCP transport, and a stray print() corrupts the protocol.
 
 from __future__ import annotations
 
+import functools
 import os
 import threading
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import httpx
 import psycopg
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from psycopg.types.json import Jsonb
 
 from cognipm.config import TOKEN_TTL_MINUTES
 from cognipm.db.audit import log_audit
 from cognipm.db.connection import get_connection
 from cognipm.gateway.apply import ApplyFailed, apply_staged_changes
-from cognipm.gateway.jira import MAX_SUMMARY_LENGTH, Issue, JiraClient, validate_issue_key
+from cognipm.gateway.guardrails import GuardrailViolation
+from cognipm.gateway.jira import MAX_SUMMARY_LENGTH, Issue, JiraClient, describe_error, validate_issue_key
 
 DEFAULT_AGENT = "planning"
 TASK_TYPES = ("p1", "p2")  # P1 backlog drafting, P2 task breakdown
@@ -391,6 +395,24 @@ TOOLS_BY_MODE: dict[str, tuple[str, ...]] = {
 }
 
 
+def _refusals_reach_the_caller(tool):
+    """The MCP server hides the text of any exception a tool raises (it could be anything, including
+    a secret), so the caller would only learn "Error executing tool". A refusal is deliberate and
+    safe to explain - an agent cannot fix a draft it is not told is wrong - so turn the exceptions
+    we raise on purpose into ToolError, which is passed through. Anything else stays a masked crash."""
+
+    @functools.wraps(tool)
+    def call(*args, **kwargs):
+        try:
+            return tool(*args, **kwargs)
+        except (ValueError, GuardrailViolation, ApplyFailed) as exc:
+            raise ToolError(str(exc)) from exc
+        except httpx.HTTPStatusError as exc:
+            raise ToolError(describe_error(exc)) from exc
+
+    return call
+
+
 def build_server(
     mode: str,
     jira: JiraClient | None = None,
@@ -413,7 +435,7 @@ def build_server(
         "commit_changes": tools.commit_changes,
     }
     for name in TOOLS_BY_MODE[mode]:
-        server.add_tool(registry[name], name=name)
+        server.add_tool(_refusals_reach_the_caller(registry[name]), name=name)
     return server
 
 
