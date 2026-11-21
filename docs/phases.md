@@ -355,6 +355,52 @@ The human's decisions live here, not in the gateway: approving is what writes to
 - Tests: approving twice is refused (no duplicate issues); reject never writes; editing an applied change is
   refused; a Jira failure halfway through a batch reports exactly which items were created and which were not.
 
+**Status (20 Nov): built and run live.** 213 tests pass against a real Postgres and
+ruff is clean. Every route is tested end to end through the real app with a scripted model and a fake Jira,
+including the refusals: approving twice, approving a sub-task without its parent, editing a created draft, and
+Jira failing halfway (the response lists exactly what was and was not created, and approving again creates only
+the rest). `scripts/demo_flow.py --confirm` drives the whole flow over HTTP against the real site; it creates one
+issue and Gemini calls. It passed on the real `MCP` site: the Co-Pilot answered a question; a P1 run over
+synthetic notes produced two drafts with their quotes located in the input; the PM edit and a one-draft approval
+created MCP-15 with the PM's wording, the `cognipm-drafted` label and the draft-id stamp, while the other draft
+was dropped and not created; approving again returned 409; the script then closed MCP-15 (the API user cannot
+delete). Two things the run showed: the Co-Pilot first sent an unbounded JQL query, Jira refused it with a clear
+message, and the model read that message and corrected itself (the refusal-text fix from Phase 3 working as
+intended; a line in the chat prompt saying JQL must be restricted, e.g. `project = ...`, would save the retry);
+and the model chose its own labels (`authentication`, `security`, `support`) that were not in the notes, so
+decide whether drafts should be allowed to carry labels at all. What was built:
+- **Routes** (all under `/api`): `POST /runs`, `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/events` (SSE with
+  `Last-Event-ID` resume), `PATCH /changes/{id}`, `POST /runs/{id}/approve|reject|rerun`, `POST /chat`,
+  `GET /audit?filter=`, `GET /modes`, `GET /health`. Responses are typed Pydantic models, so the OpenAPI schema
+  carries real types.
+- **Starting a run returns at once.** `POST /runs` answers 202 with the run id as soon as the gateway has opened
+  the run (a new `on_run_started` hook in the orchestrator), and the run continues in the background.
+- **Review support:** each draft's cited quotes come back with their position in the original input
+  (`sources[].start/end`) so the UI can highlight them (H6); the run stores `input_text`, `instructions`,
+  `story_key`, and `ready_at`, so a rerun starts from the same input and `seconds_to_decision` can be reported
+  (migration `0003_run_input.sql`). `input_text` is project data: the retention policy in H4 applies to it.
+- **H1, duplicate-create safety: done.** Every issue is stamped with the label `cognipm-draft-<draft id>`, and
+  before creating, Jira is searched for that stamp; a draft whose issue already exists is adopted, not created
+  again (audited as `recovered`). Known limit: Jira's search index lags a moment behind writes, so a retry in
+  the first second or two after a crash can miss it.
+- **H2, provenance in Jira: done.** Every created issue gets the label `cognipm-drafted` and a comment naming the
+  run, the mode and the approver (a failed comment is audited, not fatal).
+- **H7, durability: partly done.** A model call is retried up to twice on 429 and 5xx with a pause (not on 402 or
+  400) and each retry shows in the step trace; a run that was `running` when the server stopped is marked `failed`
+  at startup instead of staying `running` forever. Not done: a persisted queue, so a restart still abandons a run
+  in flight (it can be rerun). Fine for one API process; revisit before more than one.
+- **Concurrency:** approve, reject and rerun take a per-run database lock, so two clicks or two tabs cannot both
+  create the issues.
+- **Approve semantics:** `change_ids` ticks a subset and any pending draft left out is dropped (`rejected`); a
+  sub-task whose parent is unticked is refused before anything is written. A run that `failed` part-way can be
+  approved again.
+- **Rerun** starts the new run first and rejects the old one only once the new run exists, so a rerun that cannot
+  start leaves the original alone.
+- **Types for the frontend:** `frontend/src/api/openapi.json` is exported by `scripts/export_openapi.py`, and a
+  test fails if it is out of date. Generating the TypeScript types waits for the Phase 6 scaffold, where
+  `openapi-typescript` becomes a dev dependency. New dependencies: `fastapi`, `uvicorn`.
+- Still open for Phase 7: login (H3). Until then do not expose this API publicly.
+
 **Done when:** the whole MVP flow can be driven with `curl` against the real site.
 
 **Suggested commit message**
@@ -624,13 +670,13 @@ says why it matters and where it is scheduled. **Before any real user touches th
 
 | # | Gap | Why it matters | Scheduled in |
 |---|---|---|---|
-| H1 | **Duplicate creates** | A crash or retry between "Jira created the issue" and "the database recorded it" leaves an orphan, and the retry makes a second issue. Stamp each issue with its draft id (a label or issue property) and look for it before creating. | Phase 5 (`apply.py`) |
-| H2 | **AI provenance in Jira** | Jira's history shows only the API user, so teammates cannot tell which issues the AI drafted. Add the label `cognipm-drafted` and a comment with run, mode and approver. | Phase 5 |
+| H1 | **Duplicate creates (done in Phase 5)** | A crash or retry between "Jira created the issue" and "the database recorded it" leaves an orphan, and the retry makes a second issue. Stamp each issue with its draft id (a label or issue property) and look for it before creating. | Phase 5 (`apply.py`) |
+| H2 | **AI provenance in Jira (done in Phase 5)** | Jira's history shows only the API user, so teammates cannot tell which issues the AI drafted. Add the label `cognipm-drafted` and a comment with run, mode and approver. | Phase 5 |
 | H3 | **Login and attribution** | The API has no login: anyone who can reach it can approve a write, and every Jira write comes from one shared token. Add login and roles; decide between a shared bot user and per-user OAuth (3LO) so the approving PM is on record. | Phase 7 |
 | H4 | **Privacy and consent** | Project text goes to Gemini and sits in our audit log. Needs participant consent, redaction of personal data before the model call, a retention policy for run text and logs, and agreement with the ethics application (the paper's Privacy Act row). Only synthetic or anonymised data until then. | Phase 10, but design in Phase 5 |
 | H5 | **Jira variety** | Create fails on required custom fields; issue-type schemes, team-managed vs company-managed projects, and epic/parent rules differ; 429 rate limits need retry with backoff; search needs pagination. Surface "Jira rejected this because..." in the UI instead of a generic failure. | Phase 4 (required-field check), Phase 5 (retry) |
 | H6 | **Review fatigue** | A batch of 30 drafts invites rubber-stamping, which is the central risk of human oversight and the thing the paper studies. Highlight each draft's cited quote in the input, flag assumptions, require explicit ticks (no "approve all" default), and record time per decision. Treat the review screen as a research instrument. | Phase 6 |
-| H7 | **Durable runs and model failures** | A run is an in-process async job, so a restart loses it mid-flight. Gemini 429, timeouts and exhausted credit (seen on 13 Nov, HTTP 402) need bounded retries and a readable message in the UI. Move runs to a persisted queue. | Phase 5 |
+| H7 | **Durable runs and model failures (retries and restart recovery done in Phase 5; queue still open)** | A run is an in-process async job, so a restart loses it mid-flight. Gemini 429, timeouts and exhausted credit (seen on 13 Nov, HTTP 402) need bounded retries and a readable message in the UI. Move runs to a persisted queue. | Phase 5 |
 | H8 | **Prompt injection from input** | Meeting notes may say "ignore the above". The tool layer still blocks any write the mode does not allow, but drafts could be skewed. Keep `max_items_per_run`, always show provenance, and never act on instructions inside the input. | Phase 4 |
 | H9 | **Quality regression** | There is no ground truth. Build a golden set of notes with expected stories and run it on every prompt or model change. Pin the model version (aliases drift) and store a prompt version on each run. | Phase 9, needed for Phase 10 |
 | H10 | **Least privilege** | Use a dedicated Jira bot user with only Browse and Create permissions. The current user already cannot delete issues, which is the right direction. Keep secrets only in `.env`. | Setup, before Phase 10 |

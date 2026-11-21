@@ -1,0 +1,1657 @@
+{
+  "components": {
+    "schemas": {
+      "ApplyProblem": {
+        "description": "The body of a 502 when Jira refuses part-way through approving: exactly what happened.",
+        "properties": {
+          "created": {
+            "items": {
+              "$ref": "#/components/schemas/CreatedIssue"
+            },
+            "title": "Created",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "not_created": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Created",
+            "type": "array"
+          }
+        },
+        "required": [
+          "message",
+          "created",
+          "not_created"
+        ],
+        "title": "ApplyProblem",
+        "type": "object"
+      },
+      "ApproveBody": {
+        "properties": {
+          "change_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The drafts to create. Any pending draft left out is dropped, not created. Omit to approve all.",
+            "title": "Change Ids"
+          }
+        },
+        "title": "ApproveBody",
+        "type": "object"
+      },
+      "ApproveResult": {
+        "properties": {
+          "created": {
+            "items": {
+              "$ref": "#/components/schemas/CreatedIssue"
+            },
+            "title": "Created",
+            "type": "array"
+          },
+          "dropped": {
+            "description": "Draft ids the PM left out, which were not created",
+            "items": {
+              "type": "string"
+            },
+            "title": "Dropped",
+            "type": "array"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "created",
+          "dropped"
+        ],
+        "title": "ApproveResult",
+        "type": "object"
+      },
+      "AuditPage": {
+        "properties": {
+          "filter": {
+            "title": "Filter",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AuditRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "filter",
+          "rows"
+        ],
+        "title": "AuditPage",
+        "type": "object"
+      },
+      "AuditRow": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ts",
+          "run_id",
+          "actor",
+          "mode",
+          "action",
+          "outcome",
+          "detail",
+          "before",
+          "after"
+        ],
+        "title": "AuditRow",
+        "type": "object"
+      },
+      "ChangeEdit": {
+        "description": "The fields a PM may change on a draft. Only what is sent is changed.",
+        "properties": {
+          "acceptance_criteria": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acceptance Criteria"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "issue_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Story",
+                  "Task",
+                  "Bug"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Type"
+          },
+          "labels": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labels"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "title": "ChangeEdit",
+        "type": "object"
+      },
+      "ChatBody": {
+        "properties": {
+          "message": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ChatBody",
+        "type": "object"
+      },
+      "ChatResult": {
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "tool_calls": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tool Calls",
+            "type": "array"
+          }
+        },
+        "required": [
+          "session_id",
+          "answer",
+          "tool_calls"
+        ],
+        "title": "ChatResult",
+        "type": "object"
+      },
+      "CreatedIssue": {
+        "properties": {
+          "change_id": {
+            "title": "Change Id",
+            "type": "string"
+          },
+          "issue_key": {
+            "title": "Issue Key",
+            "type": "string"
+          },
+          "recovered": {
+            "description": "Already existed from an earlier, interrupted attempt; not created again",
+            "title": "Recovered",
+            "type": "boolean"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "change_id",
+          "issue_key",
+          "url",
+          "recovered"
+        ],
+        "title": "CreatedIssue",
+        "type": "object"
+      },
+      "DraftOut": {
+        "properties": {
+          "action_class": {
+            "title": "Action Class",
+            "type": "string"
+          },
+          "assumptions": {
+            "title": "Assumptions",
+            "type": "string"
+          },
+          "created_issue_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created Issue Key"
+          },
+          "edited_payload": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The PM's version, when they changed anything",
+            "title": "Edited Payload"
+          },
+          "effective": {
+            "additionalProperties": true,
+            "description": "What will be created: the edited version if there is one",
+            "title": "Effective",
+            "type": "object"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Url"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "parent_change_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Change Id"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "description": "Exactly what the agent proposed",
+            "title": "Payload",
+            "type": "object"
+          },
+          "reasoning": {
+            "title": "Reasoning",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceSpan"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "payload",
+          "edited_payload",
+          "effective",
+          "parent_change_id",
+          "sources",
+          "reasoning",
+          "assumptions",
+          "action_class",
+          "created_issue_key",
+          "issue_url",
+          "error"
+        ],
+        "title": "DraftOut",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ModeOut": {
+        "properties": {
+          "can_commit": {
+            "title": "Can Commit",
+            "type": "boolean"
+          },
+          "can_stage_drafts": {
+            "title": "Can Stage Drafts",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "tool_help": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Tool Help",
+            "type": "object"
+          },
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "tools",
+          "can_stage_drafts",
+          "can_commit",
+          "tool_help"
+        ],
+        "title": "ModeOut",
+        "type": "object"
+      },
+      "ParentStory": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "summary",
+          "status",
+          "url"
+        ],
+        "title": "ParentStory",
+        "type": "object"
+      },
+      "RejectBody": {
+        "properties": {
+          "comment": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Comment",
+            "type": "string"
+          }
+        },
+        "title": "RejectBody",
+        "type": "object"
+      },
+      "RejectResult": {
+        "properties": {
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status"
+        ],
+        "title": "RejectResult",
+        "type": "object"
+      },
+      "RerunBody": {
+        "properties": {
+          "note": {
+            "description": "What was wrong; given to the agent as extra instruction",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "RerunBody",
+        "type": "object"
+      },
+      "RerunResult": {
+        "properties": {
+          "rerun_of": {
+            "title": "Rerun Of",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "rerun_of"
+        ],
+        "title": "RerunResult",
+        "type": "object"
+      },
+      "RunDetail": {
+        "properties": {
+          "can_decide": {
+            "description": "The PM may still approve, reject or rerun",
+            "title": "Can Decide",
+            "type": "boolean"
+          },
+          "drafts": {
+            "items": {
+              "$ref": "#/components/schemas/DraftOut"
+            },
+            "title": "Drafts",
+            "type": "array"
+          },
+          "editable": {
+            "description": "The PM may still edit drafts",
+            "title": "Editable",
+            "type": "boolean"
+          },
+          "input_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Text"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions"
+          },
+          "parent_story": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParentStory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunSummary"
+          },
+          "seconds_to_decision": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Time from ready for review to the PM's decision",
+            "title": "Seconds To Decision"
+          },
+          "status_note": {
+            "title": "Status Note",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/StepOut"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "story_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Story Key"
+          }
+        },
+        "required": [
+          "run",
+          "input_text",
+          "instructions",
+          "story_key",
+          "parent_story",
+          "drafts",
+          "steps",
+          "status_note",
+          "editable",
+          "can_decide",
+          "seconds_to_decision"
+        ],
+        "title": "RunDetail",
+        "type": "object"
+      },
+      "RunList": {
+        "properties": {
+          "awaiting_review_count": {
+            "title": "Awaiting Review Count",
+            "type": "integer"
+          },
+          "past": {
+            "items": {
+              "$ref": "#/components/schemas/RunSummary"
+            },
+            "title": "Past",
+            "type": "array"
+          },
+          "waiting": {
+            "items": {
+              "$ref": "#/components/schemas/RunSummary"
+            },
+            "title": "Waiting",
+            "type": "array"
+          }
+        },
+        "required": [
+          "waiting",
+          "past",
+          "awaiting_review_count"
+        ],
+        "title": "RunList",
+        "type": "object"
+      },
+      "RunSummary": {
+        "properties": {
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "draft_count": {
+            "title": "Draft Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "ready_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ready At"
+          },
+          "rerun_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerun Of"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_type": {
+            "title": "Task Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "mode",
+          "task_type",
+          "status",
+          "scope",
+          "agent",
+          "created_at",
+          "ready_at",
+          "decided_at",
+          "comment",
+          "rerun_of",
+          "model",
+          "input_tokens",
+          "output_tokens",
+          "draft_count"
+        ],
+        "title": "RunSummary",
+        "type": "object"
+      },
+      "SourceSpan": {
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the quote begins in the run's input, or null if it cannot be located",
+            "title": "Start"
+          }
+        },
+        "required": [
+          "quote",
+          "start",
+          "end"
+        ],
+        "title": "SourceSpan",
+        "type": "object"
+      },
+      "StartRunBody": {
+        "properties": {
+          "input_text": {
+            "anyOf": [
+              {
+                "maxLength": 200000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "p1: the requirements or meeting notes to draft from",
+            "title": "Input Text"
+          },
+          "instructions": {
+            "default": "",
+            "description": "Extra guidance for the agent",
+            "maxLength": 4000,
+            "title": "Instructions",
+            "type": "string"
+          },
+          "story_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "p2: the existing story to break down, e.g. MCP-4",
+            "title": "Story Key"
+          },
+          "task": {
+            "description": "p1 drafts backlog items from text; p2 breaks one story into sub-tasks",
+            "enum": [
+              "p1",
+              "p2"
+            ],
+            "title": "Task",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "title": "StartRunBody",
+        "type": "object"
+      },
+      "StartedRun": {
+        "properties": {
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id"
+        ],
+        "title": "StartedRun",
+        "type": "object"
+      },
+      "StepOut": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "tool": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ts",
+          "phase",
+          "state",
+          "tool",
+          "detail"
+        ],
+        "title": "StepOut",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "CogniPM API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/audit": {
+      "get": {
+        "description": "Newest first. `changed_jira`: issues that were created. `needs_you`: activity on runs awaiting review.\n`rejected`: rejections, reruns, dropped drafts and anything a guardrail refused. `advice_only`: Co-Pilot chat.",
+        "operationId": "audit_log_api_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "filter",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "changed_jira",
+                "needs_you",
+                "rejected",
+                "advice_only"
+              ],
+              "title": "Filter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Audit Log",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/api/changes/{change_id}": {
+      "patch": {
+        "description": "Edit a draft before approving it. The agent's original stays in `payload`; the PM's version is\n`edited_payload`, and the audit log records exactly what changed.",
+        "operationId": "edit_draft_api_changes__change_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Draft",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/chat": {
+      "post": {
+        "description": "One Co-Pilot turn. Leave `session_id` out to start a conversation; pass the returned one to continue it.",
+        "operationId": "chat_api_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chat",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Api Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "meta"
+        ]
+      }
+    },
+    "/api/modes": {
+      "get": {
+        "operationId": "list_modes_api_modes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ModeOut"
+                  },
+                  "title": "Response List Modes Api Modes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Modes",
+        "tags": [
+          "modes"
+        ]
+      }
+    },
+    "/api/runs": {
+      "get": {
+        "description": "The decision inbox: runs waiting on a human first (oldest first, so nothing sits forgotten), then the rest.",
+        "operationId": "list_runs_api_runs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Runs",
+        "tags": [
+          "runs"
+        ]
+      },
+      "post": {
+        "description": "Start a run in M2. Returns as soon as the run exists; follow it through /runs/{id}/events.",
+        "operationId": "start_run_api_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartRunBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartedRun"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}": {
+      "get": {
+        "operationId": "show_run_api_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show Run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/approve": {
+      "post": {
+        "description": "Create the ticked drafts in Jira. Drafts left out are dropped, not created. Safe to repeat: an\nalready-approved run is refused, and a run that failed part-way creates only what is left.",
+        "operationId": "approve_run_api_runs__run_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ApproveBody"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApproveResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyProblem"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          }
+        },
+        "summary": "Approve Run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/events": {
+      "get": {
+        "description": "Server-Sent Events: each step of the run as it is recorded, then an `end` event once it is no longer\nrunning. Reconnecting with Last-Event-ID resumes where the stream left off.",
+        "operationId": "run_events_api_runs__run_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Events",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/reject": {
+      "post": {
+        "description": "Send the run back. Nothing is created in Jira; the note is kept as feedback.",
+        "operationId": "reject_run_api_runs__run_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RejectBody"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/rerun": {
+      "post": {
+        "description": "Run the same task again with the PM's note as extra instruction. The old run is rejected and the new\none records which run it replaces, so reruns chain.",
+        "operationId": "rerun_api_runs__run_id__rerun_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RerunBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RerunResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rerun",
+        "tags": [
+          "runs"
+        ]
+      }
+    }
+  }
+}

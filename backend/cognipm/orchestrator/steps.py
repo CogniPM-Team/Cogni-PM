@@ -52,6 +52,31 @@ def record_usage(
     conn.commit()
 
 
+def record_input(
+    conn: psycopg.Connection,
+    run_id: str,
+    *,
+    input_text: str | None = None,
+    instructions: str | None = None,
+    story_key: str | None = None,
+    rerun_of: str | None = None,
+) -> None:
+    """Keep what a run was asked to work on: the review screen shows each cited quote in this text, and
+    a rerun starts from it. Only the values given are written."""
+    columns = {
+        "input_text": input_text,
+        "instructions": instructions,
+        "story_key": story_key,
+        "rerun_of": rerun_of,
+    }
+    given = {k: v for k, v in columns.items() if v is not None}
+    if not given:
+        return
+    assignments = ", ".join(f"{k} = %s" for k in given)  # column names are the fixed ones above, never input
+    conn.execute(f"UPDATE runs SET {assignments} WHERE id = %s", (*given.values(), run_id))
+    conn.commit()
+
+
 def mark_run_failed(conn: psycopg.Connection, run_id: str, reason: str) -> None:
     """The run cannot continue. Drafts already staged stay staged for the PM to see."""
     conn.rollback()

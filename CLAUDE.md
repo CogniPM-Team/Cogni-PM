@@ -8,7 +8,8 @@ so and wait; do not quietly build around it.
 
 Implemented: the Jira client (`gateway/jira.py`), the Postgres schema (`db/`), the mode-scoped MCP gateway
 (`gateway/server.py`, `apply.py`), the guardrail chain (`gateway/guardrails.py`) and the orchestrator
-(`orchestrator/`: P1, P2 and the M1 chat). The API, RAG and frontend are empty, documented packages or folders. `docs/phases.md` is the build order. Build the next piece; don't
+(`orchestrator/`: P1, P2 and the M1 chat) and the API (`api/`). RAG and the frontend are empty, documented
+packages or folders. `docs/phases.md` is the build order. Build the next piece; don't
 pre-build pieces nobody asked for.
 
 ## The rule to never break

@@ -226,7 +226,9 @@ class GatewayTools:
                 "WHERE run_id = %s ORDER BY created_at, id",
                 (run_id,),
             ).fetchall()
-            self.conn.execute("UPDATE runs SET status = 'awaiting_review' WHERE id = %s", (run_id,))
+            self.conn.execute(
+                "UPDATE runs SET status = 'awaiting_review', ready_at = now() WHERE id = %s", (run_id,)
+            )
             self.conn.commit()
             log_audit(
                 self.conn,
@@ -416,6 +418,9 @@ TOOLS_BY_MODE: dict[str, tuple[str, ...]] = {
     "M2": READ_TOOL_NAMES + PROPOSE_TOOL_NAMES,
     "M3": READ_TOOL_NAMES + PROPOSE_TOOL_NAMES + COMMIT_TOOL_NAMES,
 }
+
+
+MODE_NAMES = {"M1": "Co-Pilot", "M2": "Super-Pilot", "M3": "Auto-Pilot"}
 
 
 def _refusals_reach_the_caller(tool):

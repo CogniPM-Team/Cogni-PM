@@ -35,3 +35,10 @@ def max_items_per_run() -> int:
     """How many issues one run may stage or create, so a bad run (or a hostile document) cannot flood
     the backlog. Read at call time so tests can change it."""
     return int(os.environ.get("COGNIPM_MAX_ITEMS_PER_RUN", "20"))
+
+
+def cors_origins() -> list[str]:
+    """Browser origins allowed to call the API (the frontend's URL in production; in development Vite
+    proxies /api, so this only matters when deployed)."""
+    raw = os.environ.get("CORS_ORIGINS", "http://localhost:5173")
+    return [o.strip() for o in raw.split(",") if o.strip()]

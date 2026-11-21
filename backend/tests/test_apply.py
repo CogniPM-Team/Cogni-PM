@@ -9,7 +9,7 @@ import pytest
 
 from cognipm.gateway.apply import ApplyFailed, apply_staged_changes
 from cognipm.gateway.server import GatewayTools
-from tests.helpers import fake_jira, posts
+from tests.helpers import creates, fake_jira, posts
 
 SOURCES = ["Quote from the input."]
 REASONING = "Reasoning that is long enough."
@@ -48,7 +48,7 @@ def test_a_story_is_created_before_the_subtask_that_hangs_under_it(conn):
     assert [r["change_id"] for r in result] == [story, child]
     story_fields, child_fields = created
     assert story_fields["issuetype"] == {"id": "10001"} and "parent" not in story_fields
-    assert story_fields["labels"] == ["x"]
+    assert story_fields["labels"] == ["x", "cognipm-drafted", f"cognipm-draft-{story}"]
     assert child_fields["issuetype"] == {"id": "10003"}  # the sub-task type, found by its flag
     assert child_fields["parent"] == {"key": "TEST-100"}  # the key Jira gave the story a moment earlier
     rows = conn.execute(
@@ -133,3 +133,59 @@ def test_a_retry_creates_only_what_is_left(conn):
     assert [r["change_id"] for r in result] == [child]
     assert created[0]["parent"] == {"key": "TEST-100"}  # still hangs under the story made the first time
     assert set(statuses(conn).values()) == {"applied"}
+
+
+# ---------- safe to retry, and honest about where an issue came from ----------
+
+
+def test_every_created_issue_says_it_was_drafted_by_cognipm_and_who_approved_it(conn):
+    jira, _, created = fake_jira()
+    tools = GatewayTools(jira, conn, "M2", agent="orchestrator:test")
+    run_id = tools.start_run("p1", "notes")
+    change = tools.propose_backlog_item(run_id, "A story", "d", ["c"], REASONING, "NA", SOURCES)
+    conn.execute(
+        'UPDATE staged_changes SET edited_payload = payload || \'{"summary": "A better story"}\' WHERE id = %s',
+        (change,),
+    )
+    conn.commit()
+
+    apply(conn, jira, run_id)
+
+    assert {"cognipm-drafted", f"cognipm-draft-{change}"} <= set(created[0]["labels"])
+    ((key, text),) = jira.comments
+    assert key == "TEST-100"
+    assert "Drafted by CogniPM at M2" in text and run_id in text
+    assert "Approved by human:reviewer, with edits to the draft" in text
+
+
+def test_a_failed_provenance_comment_does_not_undo_a_create(conn):
+    jira, _, created = fake_jira()
+    tools = GatewayTools(jira, conn, "M2")
+    run_id = tools.start_run("p1", "notes")
+    tools.propose_backlog_item(run_id, "A story", "d", ["c"], REASONING, "NA", SOURCES)
+    jira.add_comment = lambda key, text: (_ for _ in ()).throw(RuntimeError("comments are down"))
+
+    result = apply(conn, jira, run_id)
+
+    assert [r["issue_key"] for r in result] == ["TEST-100"] and len(created) == 1
+    row = conn.execute("SELECT outcome, detail FROM audit_log WHERE action = 'provenance_comment'").fetchone()
+    assert row["outcome"] == "failed" and "comments are down" in row["detail"]
+
+
+def test_a_draft_that_was_created_before_a_crash_is_adopted_not_created_a_second_time(conn):
+    jira, _, _ = fake_jira()
+    tools = GatewayTools(jira, conn, "M2")
+    run_id = tools.start_run("p1", "notes")
+    change = tools.propose_backlog_item(run_id, "A story", "d", ["c"], REASONING, "NA", SOURCES)
+    # The first attempt made TEST-55 in Jira, then died before recording it. The retry finds its stamp.
+    retry_jira, seen, created = fake_jira(stamped={change: "TEST-55"})
+
+    result = apply(conn, retry_jira, run_id)
+
+    assert result[0]["issue_key"] == "TEST-55" and result[0]["recovered"] is True
+    assert creates(seen) == [] and created == []  # no second issue
+    row = conn.execute("SELECT status, created_issue_key FROM staged_changes").fetchone()
+    assert row == {"status": "applied", "created_issue_key": "TEST-55"}
+    assert conn.execute("SELECT outcome FROM audit_log WHERE action = 'create_issue'").fetchone() == {
+        "outcome": "recovered"
+    }

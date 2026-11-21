@@ -17,13 +17,16 @@ them in a BaseExceptionGroup (the stdio transport runs an anyio task group).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal, TypedDict
 
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types as genai_types
 from langgraph.graph import END, START, StateGraph
 from mcp.client import Client
@@ -34,7 +37,7 @@ from cognipm.db.connection import Connection
 from cognipm.orchestrator.mcp_bridge import gateway_params, tool_result_payload
 from cognipm.orchestrator.prompts import P1_SYSTEM_PROMPT, P2_SYSTEM_PROMPT, build_p1_prompt, build_p2_prompt
 from cognipm.orchestrator.schemas import BacklogDrafts, SubtaskDrafts
-from cognipm.orchestrator.steps import StepListener, StepRecorder, mark_run_failed, record_usage
+from cognipm.orchestrator.steps import StepListener, StepRecorder, mark_run_failed, record_input, record_usage
 
 MAX_ATTEMPTS = 2  # generation attempts when nothing usable comes back
 MAX_EXISTING_SHOWN = 30  # existing backlog items shown to the model so it avoids duplicates
@@ -65,6 +68,8 @@ class _Run:
     mcp: Any
     gemini: genai.Client
     rec: StepRecorder
+    rerun_of: str | None = None
+    on_run_started: Callable[[str], None] | None = None
     input_text: str = ""
     story_key: str | None = None
     context_jql: str | None = None
@@ -121,13 +126,24 @@ class _Run:
         except RuntimeError as exc:
             raise OrchestratorError(f"the gateway at {self.mode} refused to open a run: {exc}") from exc
         self.rec.run_id = self.run_id
+        record_input(
+            self.conn,
+            self.run_id,
+            input_text=self.input_text or None,
+            instructions=self.instructions or None,
+            story_key=self.story_key,
+            rerun_of=self.rerun_of,
+        )
         self.rec("analysing", "start", tool="start_run", mode=self.mode, task=self.task)
+        if self.on_run_started is not None:
+            self.on_run_started(self.run_id)  # the caller can now hand the run's id to a person
 
     async def analyse(self) -> None:
         if self.task == "p2":
             issue = await self.call("get_issue", issue_key=self.story_key)
             self.rec("analysing", "end", tool="get_issue", key=self.story_key)
             self.input_text = f"{issue['summary']}\n\n{issue.get('description') or ''}".strip()
+            record_input(self.conn, self.run_id, input_text=self.input_text)
             if not (issue.get("description") or "").strip():
                 raise OrchestratorError(f"{self.story_key} has no description to break down")
         elif self.context_jql:
@@ -160,7 +176,7 @@ class _Run:
             system_instruction=system, response_mime_type="application/json", response_schema=schema
         )
         model = orchestrator_model()
-        response = await self.gemini.aio.models.generate_content(model=model, contents=prompt, config=config)
+        response = await _generate_with_retry(self.gemini, model, prompt, config, self.rec, self.attempt)
         usage = getattr(response, "usage_metadata", None)
         record_usage(
             self.conn,
@@ -270,6 +286,28 @@ class _Run:
         return graph.compile()
 
 
+RETRY_DELAYS = (2.0, 6.0)  # seconds to wait before each retry of a model call: three tries in all
+_RETRYABLE = (
+    429,
+    500,
+    502,
+    503,
+    504,
+)  # rate limit and server trouble; 402 (no credit) or 400 are not worth retrying
+
+
+async def _generate_with_retry(gemini, model, prompt, config, rec: StepRecorder, attempt: int):
+    """One model call, retried a bounded number of times when Gemini is rate-limiting or briefly unwell."""
+    for delay in (*RETRY_DELAYS, None):
+        try:
+            return await gemini.aio.models.generate_content(model=model, contents=prompt, config=config)
+        except genai_errors.APIError as exc:
+            if delay is None or exc.code not in _RETRYABLE:
+                raise
+            rec("generating", "retry", attempt=attempt, code=exc.code, wait_seconds=delay)
+            await asyncio.sleep(delay)
+
+
 def _normalise(text: str) -> str:
     """Whitespace, case and typographic quotes/dashes must not make a real quote look fake."""
     text = text.translate(str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"', "–": "-", "—": "-"}))
@@ -289,6 +327,8 @@ async def run_task(
     gemini: genai.Client | None = None,
     mcp_server: object | None = None,
     on_step: StepListener | None = None,
+    rerun_of: str | None = None,
+    on_run_started: Callable[[str], None] | None = None,
 ) -> TaskResult:
     """Run P1 (give `input_text`) or P2 (give `story_key`) and return once the drafts are staged and
     the run is `awaiting_review`. Nothing is created in Jira.
@@ -318,6 +358,8 @@ async def run_task(
             mcp=mcp_client,
             gemini=gemini_client,
             rec=StepRecorder(conn, on_step),
+            rerun_of=rerun_of,
+            on_run_started=on_run_started,
             input_text=input_text,
             story_key=story_key,
             context_jql=context_jql,

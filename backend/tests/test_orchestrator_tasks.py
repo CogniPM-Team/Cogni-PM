@@ -5,9 +5,11 @@ quote that is not in the input, a malformed draft, and a mode that has no start_
 from __future__ import annotations
 
 import pytest
+from google.genai import errors as genai_errors
 
 from cognipm.gateway.jira import text_to_adf
 from cognipm.gateway.server import build_server
+from cognipm.orchestrator import tasks
 from cognipm.orchestrator.tasks import OrchestratorError, run_task
 from tests.fake_gemini import FakeGemini, backlog_item, drafts_reply, raw_text_reply, subtask
 from tests.helpers import creates, issue_creating_site, make_client
@@ -259,3 +261,91 @@ async def test_a_run_at_m1_cannot_begin_because_start_run_does_not_exist_for_it(
     assert gemini.calls == []  # it never even asked the model
     assert conn.execute("SELECT COUNT(*) AS n FROM runs").fetchone() == {"n": 0}
     assert seen == []
+
+
+# ---------- what the API needs from a run ----------
+
+
+async def test_a_run_keeps_its_input_and_instructions_and_says_when_it_has_started(env):
+    conn, _, _ = env
+    started = []
+    gemini = FakeGemini([drafts_reply([backlog_item("Password reset", RESET)])])
+
+    result = await p1(env, gemini, instructions="Keep it short", on_run_started=started.append)
+
+    assert started == [result.run_id]  # the caller learns the run id before the model has even been asked
+    run = run_row(conn)
+    assert run["input_text"] == NOTES and run["instructions"] == "Keep it short"
+    assert run["ready_at"] is not None and run["rerun_of"] is None
+
+
+async def test_a_p2_run_keeps_the_story_text_it_was_given(env):
+    conn, _, _ = env
+    quote = "They request a link by email and it expires after one hour."
+    gemini = FakeGemini([drafts_reply([subtask("Send the reset email", quote)])])
+
+    await run_task(conn=conn, task="p2", story_key="TEST-1", gemini=gemini, mcp_server=env[1])
+
+    run = run_row(conn)
+    assert run["story_key"] == "TEST-1" and quote in run["input_text"]
+
+
+async def test_a_rerun_records_the_run_it_replaces(env):
+    conn, _, _ = env
+    first = await p1(env, FakeGemini([drafts_reply([backlog_item("Password reset", RESET)])]))
+
+    second = await p1(
+        env, FakeGemini([drafts_reply([backlog_item("Reset by email", RESET)])]), rerun_of=first.run_id
+    )
+
+    rows = conn.execute("SELECT id, rerun_of FROM runs ORDER BY created_at").fetchall()
+    assert [(r["id"], r["rerun_of"]) for r in rows] == [(first.run_id, None), (second.run_id, first.run_id)]
+
+
+# ---------- Gemini having a bad moment ----------
+
+
+def api_error(code: int):
+    cls = genai_errors.ServerError if code >= 500 else genai_errors.ClientError
+    return cls(code, {"error": {"message": f"scripted {code}"}})
+
+
+def failing(code: int):
+    def reply(contents):
+        raise api_error(code)
+
+    return reply
+
+
+async def test_a_rate_limited_model_call_is_retried_and_the_retry_is_visible_in_the_steps(env, monkeypatch):
+    monkeypatch.setattr(tasks, "RETRY_DELAYS", (0, 0))
+    conn, _, _ = env
+    gemini = FakeGemini([failing(429), failing(503), drafts_reply([backlog_item("Password reset", RESET)])])
+
+    result = await p1(env, gemini)
+
+    assert len(result.change_ids) == 1 and len(gemini.calls) == 3
+    retries = conn.execute("SELECT detail FROM run_steps WHERE state = 'retry' ORDER BY id").fetchall()
+    assert [r["detail"]["code"] for r in retries] == [429, 503]
+
+
+async def test_retrying_is_bounded_and_a_run_that_never_gets_through_fails_readably(env, monkeypatch):
+    monkeypatch.setattr(tasks, "RETRY_DELAYS", (0, 0))
+    conn, _, _ = env
+    gemini = FakeGemini([failing(503)] * 5)
+
+    with pytest.raises(OrchestratorError, match="503"):
+        await p1(env, gemini)
+
+    assert len(gemini.calls) == 3  # one try and two retries, then it stops
+    assert run_row(conn)["status"] == "failed"
+
+
+async def test_a_model_account_with_no_credit_is_not_retried(env, monkeypatch):
+    monkeypatch.setattr(tasks, "RETRY_DELAYS", (0, 0))
+    gemini = FakeGemini([failing(402)] * 3)
+
+    with pytest.raises(OrchestratorError, match="402"):
+        await p1(env, gemini)
+
+    assert len(gemini.calls) == 1

@@ -31,7 +31,7 @@ backend/
     gateway/apply.py    the one place a draft becomes a Jira issue       <- implemented and tested
     gateway/guardrails.py  the guardrail chain (nine rules)              <- implemented and tested
     orchestrator/       LangGraph runs (P1, P2, M1 chat), MCP client     <- implemented and tested
-    api/                FastAPI routes for the frontend                  (to build)
+    api/                FastAPI control plane (runs, review, audit)      <- implemented and tested
     db/                 PostgreSQL schema, migrations, audit log         <- implemented and tested
     rag/                embeddings + pgvector retrieval                  (to build)
   scripts/              check_connection.py, verify_write.py, demo_stage.py: live smoke tests
@@ -58,6 +58,7 @@ pip install -e ".[dev]"
 pytest                                  # no network or credentials needed (see the database note below)
 python scripts/check_connection.py      # reads your real Jira site; changes nothing
 python scripts/demo_stage.py            # runs the gateway at M1, M2, M3 over stdio; reads Jira, writes nothing
+python scripts/demo_flow.py --confirm     # the whole MVP flow over HTTP; creates ONE real issue, then closes it
 python scripts/demo_guardrails.py      # tries bad drafts against your real project: all refused, nothing created
 python scripts/demo_run.py              # a real Gemini P1 + P2 run (needs GEMINI_API_KEY; sends synthetic text)
 ```
@@ -77,7 +78,8 @@ Read [docs/architecture.md](docs/architecture.md) first. The pieces are fairly i
 1. **MCP gateway** (`backend/cognipm/gateway/`): the heart of the project. Built: per-mode tool registration.
    The guardrail chain is built; next is the API (Phase 5).
 2. **Database** (`backend/cognipm/db/`): built (runs, staged drafts, approval tokens, audit log).
-3. **API** (`backend/cognipm/api/`): the human's decisions: approve, reject, authorise.
+3. **API** (`backend/cognipm/api/`): built. Run it with `uvicorn cognipm.api.main:app --reload` from `backend/`;
+   the interactive docs are at `/docs`. No login yet: do not expose it publicly.
 4. **Orchestrator** (`backend/cognipm/orchestrator/`): LangGraph, calling the gateway as an MCP client.
 5. **Frontend** (`frontend/`): see [frontend/README.md](frontend/README.md).
 6. **RAG** (`backend/cognipm/rag/`): after the data model exists.

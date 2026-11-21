@@ -7,6 +7,7 @@ same logic, guardrail check included. Nothing here prints to stdout.
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 
 import httpx
@@ -15,6 +16,16 @@ import psycopg
 from cognipm.db.audit import log_audit
 from cognipm.gateway.guardrails import run_guardrails
 from cognipm.gateway.jira import JiraClient, describe_error, draft_to_adf
+
+PROVENANCE_LABEL = (
+    "cognipm-drafted"  # on every issue CogniPM creates, so teammates can tell it was AI-drafted
+)
+_DRAFT_ID = re.compile(r"[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+
+
+def draft_label(change_id: str) -> str:
+    """The stamp that ties a Jira issue to the draft it came from."""
+    return f"cognipm-draft-{change_id}"
 
 
 class ApplyFailed(RuntimeError):
@@ -48,6 +59,10 @@ def apply_staged_changes(
       stays what the agent proposed, so this is where "what actually happened" is decided).
     - Runs the guardrail chain on each draft immediately before its write. `automatic` says no human is
       approving this call (M3's commit_changes), which is what lets `external` actions be refused.
+    - Is safe to retry: every issue is stamped with its draft id (a label), and before creating, Jira is asked
+      whether an issue with that stamp already exists, which is how a crash between "Jira created it" and "we
+      recorded it" is recovered from instead of creating a second one. Every issue also gets the label
+      `cognipm-drafted` and a comment saying who approved it.
     - Creates parents before children, and records `created_issue_key` as it goes.
     - Refuses before writing anything if a draft's parent draft is neither in this batch
       nor already created (for example because the PM unticked it).
@@ -122,6 +137,23 @@ def _create_one(
     automatic: bool,
 ) -> dict:
     payload = change["edited_payload"] if change["edited_payload"] is not None else change["payload"]
+    was_edited = change["edited_payload"] is not None
+
+    existing = _already_created(jira, change["id"])
+    if existing is not None:
+        # An earlier attempt created it but never recorded that. Adopt it: a second issue would be a duplicate.
+        _record_created(conn, change["id"], existing.key)
+        log_audit(
+            conn,
+            run_id=run_id,
+            actor=actor,
+            mode=mode,
+            action="create_issue",
+            outcome="recovered",
+            detail=f"{change['kind']} draft {change['id']} already existed as {existing.key}; not created again",
+        )
+        return _result(change, existing.key, jira, was_edited, recovered=True)
+
     run_guardrails(
         {
             "kind": change["kind"],
@@ -154,19 +186,20 @@ def _create_one(
         ).fetchone()
         parent_key = parent["created_issue_key"]
 
+    labels = list(
+        dict.fromkeys([*(payload.get("labels") or []), PROVENANCE_LABEL, draft_label(change["id"])])
+    )
     created = jira.create_issue(
         issue_type,
         payload["summary"],
         description=draft_to_adf(payload.get("description", ""), payload.get("acceptance_criteria")),
         parent_key=parent_key,
-        labels=payload.get("labels"),
+        labels=labels,
     )
-    conn.execute(
-        "UPDATE staged_changes SET status = 'applied', created_issue_key = %s, applied_at = %s, error = NULL "
-        "WHERE id = %s",
-        (created.key, datetime.now(UTC), change["id"]),
+    _record_created(conn, change["id"], created.key)
+    _comment_provenance(
+        jira, conn, created.key, run_id=run_id, actor=actor, mode=mode, edited=was_edited, automatic=automatic
     )
-    conn.commit()
     log_audit(
         conn,
         run_id=run_id,
@@ -177,10 +210,69 @@ def _create_one(
         detail=f"{change['kind']} draft {change['id']} -> {created.key}",
         after={"issue_key": created.key, "summary": payload["summary"]},
     )
+    return _result(change, created.key, jira, was_edited, recovered=False)
+
+
+def _result(change: dict, key: str, jira: JiraClient, was_edited: bool, *, recovered: bool) -> dict:
     return {
         "change_id": change["id"],
         "kind": change["kind"],
-        "issue_key": created.key,
-        "url": created.url,
-        "was_edited": change["edited_payload"] is not None,
+        "issue_key": key,
+        "url": f"{jira.config.base_url}/browse/{key}",
+        "was_edited": was_edited,
+        "recovered": recovered,
     }
+
+
+def _record_created(conn: psycopg.Connection, change_id: str, issue_key: str) -> None:
+    conn.execute(
+        "UPDATE staged_changes SET status = 'applied', created_issue_key = %s, applied_at = %s, error = NULL "
+        "WHERE id = %s",
+        (issue_key, datetime.now(UTC), change_id),
+    )
+    conn.commit()
+
+
+def _already_created(jira: JiraClient, change_id: str):
+    """The issue an earlier attempt created for this draft, found by its stamp, or None.
+
+    ponytail: Jira's search index lags a moment behind writes, so a retry made within a second or two of
+    a crash can miss the issue. A retry normally comes much later (a person clicks again); close the gap
+    with a Jira issue property lookup if that ever matters."""
+    if not _DRAFT_ID.fullmatch(change_id):
+        return None
+    stamp = draft_label(change_id)
+    found = jira.search_issues(f'project = {jira.config.project_key} AND labels = "{stamp}"', max_results=1)
+    return next((i for i in found if stamp in i.labels), None)
+
+
+def _comment_provenance(
+    jira: JiraClient,
+    conn: psycopg.Connection,
+    issue_key: str,
+    *,
+    run_id: str,
+    actor: str,
+    mode: str | None,
+    edited: bool,
+    automatic: bool,
+) -> None:
+    """Say in Jira itself that the AI drafted this and who let it through. Best effort: the issue already
+    exists, so a failed comment is recorded, not raised."""
+    how = f"Created automatically by {actor}" if automatic else f"Approved by {actor}"
+    text = (
+        f"Drafted by CogniPM at {mode} (run {run_id}). {how}"
+        f"{', with edits to the draft' if edited else ''}. The original draft is kept in the CogniPM audit log."
+    )
+    try:
+        jira.add_comment(issue_key, text)
+    except Exception as exc:  # noqa: BLE001 - see docstring
+        log_audit(
+            conn,
+            run_id=run_id,
+            actor=actor,
+            mode=mode,
+            action="provenance_comment",
+            outcome="failed",
+            detail=f"{issue_key}: {exc}",
+        )
