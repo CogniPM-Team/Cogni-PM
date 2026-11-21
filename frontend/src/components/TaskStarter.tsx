@@ -57,9 +57,10 @@ export default function TaskStarter({ onStarted }: Props) {
 
   return (
     <section aria-label="Start a task" className="mode-M2">
-      <p className="page-subtitle">
-        Give the Super-Pilot a task. It drafts Jira issues for you to review; <strong>nothing is created in Jira
-        until you approve it</strong> in Approvals.
+      <p className="notice good">
+        <span>
+          <strong>Nothing is created in Jira until you approve it</strong> in Approvals.
+        </span>
       </p>
 
       <div className="task-choice" role="group" aria-label="Task">

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import ChatPanel from '../components/ChatPanel'
 import ChatSidebar from '../components/ChatSidebar'
 import RunProgress, { type Snapshot } from '../components/RunProgress'
@@ -8,62 +8,69 @@ import TaskStarter, { type Task } from '../components/TaskStarter'
 
 type Mode = 'M1' | 'M2'
 
-const MODES: { id: Mode | 'M3'; name: string; hint: string; disabled?: boolean }[] = [
-  { id: 'M1', name: 'Co-Pilot', hint: 'Ask questions. Read only.' },
-  { id: 'M2', name: 'Super-Pilot', hint: 'Give it a task. You approve every change.' },
-  { id: 'M3', name: 'Auto-Pilot', hint: 'Coming later', disabled: true },
+const TABS: { id: Mode | 'M3'; name: string; hint: string; disabled?: boolean }[] = [
+  { id: 'M1', name: 'Co-Pilot', hint: 'Ask questions about the project. It only reads Jira: it cannot draft or create anything.' },
+  { id: 'M2', name: 'Super-Pilot', hint: 'Give it a task. It drafts Jira issues and you approve every change.' },
+  { id: 'M3', name: 'Auto-Pilot', hint: '', disabled: true },
 ]
 
 export default function AgentConsole() {
   const { chatId } = useParams()
+  const { pathname } = useLocation()
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  // The mode lives in the address, so "New chat" is always the Co-Pilot and a chat is never mistaken for a task.
-  const mode: Mode = !chatId && params.get('mode') === 'M2' ? 'M2' : 'M1'
+  // The mode is in the address (`?mode=M2`) and the open chat is in the path, so switching mode keeps the chat you
+  // were in, and "+ New chat" or a chat in the list (which carry no mode) always mean the Co-Pilot.
+  const mode: Mode = params.get('mode') === 'M2' ? 'M2' : 'M1'
   const [runs, setRuns] = useState<{ id: string; task: Task }[]>([])
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const onSnapshot = useCallback((s: Snapshot) => setSnapshot(s), [])
 
   return (
-    <div className="console">
+    <div className={`console${mode === 'M2' ? ' with-inspector' : ''}`}>
       <ChatSidebar />
-      <div className="console-main">
-        <div className="modes" role="group" aria-label="Mode">
-          {MODES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className={`mode-option mode-${m.id}`}
-              aria-pressed={mode === m.id}
-              disabled={m.disabled}
-              onClick={() => {
-                if (m.id === 'M2') navigate('/console?mode=M2')
-                else if (mode !== 'M1') navigate('/console')
-              }}
-            >
-              {m.name}
-              <small>{m.hint}</small>
-            </button>
-          ))}
-        </div>
 
-        {mode === 'M1' ? (
-          <ChatPanel chatId={chatId} />
-        ) : (
-          <div className="console-body">
-            <TaskStarter onStarted={(id, task) => setRuns((r) => [{ id, task }, ...r])} />
-            {runs.length > 0 && (
-              <section aria-label="Runs this session" style={{ marginTop: 24 }}>
-                <h2>This session</h2>
-                {runs.map((run, index) => (
-                  <RunProgress key={run.id} runId={run.id} task={run.task} latest={index === 0} onSnapshot={onSnapshot} />
-                ))}
-              </section>
-            )}
+      <div className="console-main">
+        <header className="console-head">
+          <div className="mode-tabs" role="group" aria-label="Mode">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={`mode-${tab.id}`}
+                aria-pressed={mode === tab.id}
+                disabled={tab.disabled}
+                onClick={() => navigate(tab.id === 'M2' ? `${pathname}?mode=M2` : pathname)}
+              >
+                {tab.name}
+                {tab.disabled && <span className="soon">Soon</span>}
+              </button>
+            ))}
           </div>
-        )}
+          <p className="mode-hint" aria-live="polite">
+            {TABS.find((tab) => tab.id === mode)?.hint}
+          </p>
+        </header>
+
+        {/* Both stay mounted and the other is hidden, so an unsent question, an open chat and the runs started
+            here are all still there when you come back to a mode. */}
+        <div className="mode-pane" hidden={mode !== 'M1'}>
+          <ChatPanel chatId={chatId} />
+        </div>
+        <div className="mode-pane console-body" hidden={mode !== 'M2'}>
+          <TaskStarter onStarted={(id, task) => setRuns((r) => [{ id, task }, ...r])} />
+          {runs.length > 0 && (
+            <section aria-label="Runs this session" style={{ marginTop: 24 }}>
+              <h2>This session</h2>
+              {runs.map((run, index) => (
+                <RunProgress key={run.id} runId={run.id} task={run.task} latest={index === 0} onSnapshot={onSnapshot} />
+              ))}
+            </section>
+          )}
+        </div>
       </div>
-      <TaskInspector snapshot={snapshot} />
+
+      {mode === 'M2' && <TaskInspector snapshot={snapshot} />}
     </div>
   )
 }

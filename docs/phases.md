@@ -502,6 +502,12 @@ own address (`/console/<id>`) with its full history (and "Read Jira N times"), *
   there, or onto the area below the folders to take it out; the menu's "Move to" is the keyboard route.
 - The shell is exactly the window tall: sidebar, top bar and footer stay put, pages scroll inside, and the console's
   chat list and conversation stretch to full height with the message box pinned at the bottom.
+- The console's flow (21 Nov): the mode switch is a compact segmented control with a one-line description, and both
+  modes stay mounted (the other is hidden), so hopping to Super-Pilot and back keeps your open chat, an unsent
+  question and the runs you started; the pane that appears fades up (and does not move for people who prefer
+  reduced motion). The Co-Pilot is a centred, readable column with an empty state and suggested questions, "You" and
+  "Co-Pilot" labels, and a question box that grows as you type and is pinned at the bottom (Enter sends). The Task
+  inspector appears only in Super-Pilot, which gives the chat the room.
 - Not done: search across chats and nested folders.
 
 **Done when (MVP complete):** a PM can paste requirements in the console, review and approve the drafted stories

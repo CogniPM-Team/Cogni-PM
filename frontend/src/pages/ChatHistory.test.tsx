@@ -105,4 +105,47 @@ describe('Reopening a chat', () => {
     expect(screen.getByTestId('where')).toHaveTextContent(/^\/console$/)
     expect(screen.getByRole('button', { name: /Co-Pilot/ })).toHaveAttribute('aria-pressed', 'true')
   })
+
+  it('keeps the chat you are in, and what you were typing, when you hop to Super-Pilot and back', async () => {
+    mockApi({ 'GET /api/chat/sessions/s1': history, 'GET /api/stories': [] })
+    const user = userEvent.setup()
+    renderConsole('/console/s1')
+    await user.type(await screen.findByLabelText('Your question'), 'half a question')
+
+    await user.click(screen.getByRole('button', { name: /Super-Pilot/ }))
+    expect(screen.getByTestId('where')).toHaveTextContent('/console/s1?mode=M2') // still on the same chat
+    expect(screen.getByLabelText('Task inspector')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Co-Pilot chat', hidden: true })).not.toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: /Co-Pilot/ }))
+    expect(screen.getByTestId('where')).toHaveTextContent(/^\/console\/s1$/)
+    expect(screen.getByLabelText('Your question')).toHaveValue('half a question') // the draft survived
+    expect(screen.getByText('Which stories are open?')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Task inspector')).not.toBeInTheDocument() // only Super-Pilot has one
+  })
+
+  it('says in one line what each mode does', async () => {
+    mockApi({ 'GET /api/stories': [] })
+    const user = userEvent.setup()
+    renderConsole('/console')
+    expect(screen.getByText(/It only reads Jira: it cannot draft or create anything/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Super-Pilot/ }))
+
+    expect(screen.getByText(/It drafts Jira issues and you approve every change/)).toBeInTheDocument()
+  })
+
+  it('offers questions to start with, and asking one sends it straight away', async () => {
+    const calls = mockApi({
+      'POST /api/chat': { session_id: 's1', title: 'Which stories are still open?', answer: 'Twelve.', tool_calls: [] },
+      'GET /api/chat/sessions/s1': history,
+    })
+    const user = userEvent.setup()
+    renderConsole('/console')
+    expect(screen.getByRole('heading', { name: 'What would you like to know?' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Which stories are still open?' }))
+
+    await waitFor(() => expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({ message: 'Which stories are still open?' }))
+  })
 })
