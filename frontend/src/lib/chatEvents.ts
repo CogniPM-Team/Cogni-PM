@@ -6,3 +6,10 @@ export const CHATS_CHANGED = 'cognipm:chats-changed'
 export function notifyChatsChanged() {
   window.dispatchEvent(new Event(CHATS_CHANGED))
 }
+
+// The same for tasks: starting one, or one finishing, changes Super-Pilot's list.
+export const RUNS_CHANGED = 'cognipm:runs-changed'
+
+export function notifyRunsChanged() {
+  window.dispatchEvent(new Event(RUNS_CHANGED))
+}

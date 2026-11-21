@@ -508,6 +508,11 @@ own address (`/console/<id>`) with its full history (and "Read Jira N times"), *
   reduced motion). The Co-Pilot is a centred, readable column with an empty state and suggested questions, "You" and
   "Co-Pilot" labels, and a question box that grows as you type and is pinned at the bottom (Enter sends). The Task
   inspector appears only in Super-Pilot, which gives the chat the room.
+- One constant frame (21 Nov, second pass): the console is always a history list on the left and the work area
+  beside it, so switching mode never moves the layout. The Co-Pilot's list is its chats; the Super-Pilot's is its
+  **Tasks** (recent runs with status, the ones waiting for you first, each opening its review). The Task inspector
+  is now a slim summary strip above the run (it appears once a task exists) instead of a third column that popped
+  in and out. Both modes use the same centred reading column.
 - Not done: search across chats and nested folders.
 
 **Done when (MVP complete):** a PM can paste requirements in the console, review and approve the drafted stories

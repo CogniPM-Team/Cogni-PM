@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { RunDetail } from '../api/types'
 import { useFetch } from '../api/useFetch'
 import { useRunEvents } from '../hooks/useRunEvents'
+import { notifyRunsChanged } from '../lib/chatEvents'
 import { plural, TASK_NAMES } from '../lib/format'
 import { StatusPill } from './Pills'
 import StepTrace from './StepTrace'
@@ -28,6 +29,10 @@ export default function RunProgress({ runId, task, latest, onSnapshot }: Props) 
   const { steps, status } = useRunEvents(runId)
   const { data: detail } = useFetch<RunDetail>(status ? `/api/runs/${runId}` : null)
   const shown = detail?.run.status ?? status ?? 'running'
+
+  useEffect(() => {
+    notifyRunsChanged() // the task list shows where this run stands
+  }, [shown])
 
   useEffect(() => {
     if (latest) onSnapshot({ runId, task, status: shown, stepCount: steps.length, detail: detail ?? null })

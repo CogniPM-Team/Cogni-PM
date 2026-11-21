@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api/client'
 import type { StartedRun, StartRunBody, Story } from '../api/types'
 import { useFetch } from '../api/useFetch'
+import { notifyRunsChanged } from '../lib/chatEvents'
 import Spinner from './Spinner'
 
 const MAX_INPUT = 200_000 // the API's limit
@@ -45,6 +46,7 @@ export default function TaskStarter({ onStarted }: Props) {
     try {
       const started = await api.post<StartedRun>('/api/runs', body)
       onStarted(started.run_id, task)
+      notifyRunsChanged()
       setText('')
       setInstructions('')
       setStoryKey(null)

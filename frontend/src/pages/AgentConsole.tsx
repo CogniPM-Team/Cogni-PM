@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import ChatPanel from '../components/ChatPanel'
 import ChatSidebar from '../components/ChatSidebar'
+import RunHistory from '../components/RunHistory'
 import RunProgress, { type Snapshot } from '../components/RunProgress'
 import TaskInspector from '../components/TaskInspector'
 import TaskStarter, { type Task } from '../components/TaskStarter'
@@ -27,8 +28,17 @@ export default function AgentConsole() {
   const onSnapshot = useCallback((s: Snapshot) => setSnapshot(s), [])
 
   return (
-    <div className={`console${mode === 'M2' ? ' with-inspector' : ''}`}>
-      <ChatSidebar />
+    <div className="console">
+      {/* The frame is the same in every mode: a history list on the left (chats for the Co-Pilot, tasks for the
+          Super-Pilot) and the work area beside it. Only what fills them changes. */}
+      <aside className="console-side">
+        <div className="mode-pane" hidden={mode !== 'M1'}>
+          <ChatSidebar />
+        </div>
+        <div className="mode-pane" hidden={mode !== 'M2'}>
+          <RunHistory />
+        </div>
+      </aside>
 
       <div className="console-main">
         <header className="console-head">
@@ -58,19 +68,21 @@ export default function AgentConsole() {
           <ChatPanel chatId={chatId} />
         </div>
         <div className="mode-pane console-body" hidden={mode !== 'M2'}>
-          <TaskStarter onStarted={(id, task) => setRuns((r) => [{ id, task }, ...r])} />
-          {runs.length > 0 && (
-            <section aria-label="Runs this session" style={{ marginTop: 24 }}>
-              <h2>This session</h2>
-              {runs.map((run, index) => (
-                <RunProgress key={run.id} runId={run.id} task={run.task} latest={index === 0} onSnapshot={onSnapshot} />
-              ))}
-            </section>
-          )}
+          <div className="chat-inner">
+            <TaskStarter onStarted={(id, task) => setRuns((r) => [{ id, task }, ...r])} />
+            {runs.length > 0 && (
+              <section aria-label="Runs this session" style={{ marginTop: 8 }}>
+                <TaskInspector snapshot={snapshot} />
+                <h2>This session</h2>
+                {runs.map((run, index) => (
+                  <RunProgress key={run.id} runId={run.id} task={run.task} latest={index === 0} onSnapshot={onSnapshot} />
+                ))}
+              </section>
+            )}
+          </div>
         </div>
       </div>
 
-      {mode === 'M2' && <TaskInspector snapshot={snapshot} />}
     </div>
   )
 }

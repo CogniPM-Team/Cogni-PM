@@ -107,21 +107,29 @@ describe('Reopening a chat', () => {
   })
 
   it('keeps the chat you are in, and what you were typing, when you hop to Super-Pilot and back', async () => {
-    mockApi({ 'GET /api/chat/sessions/s1': history, 'GET /api/stories': [] })
+    mockApi({
+      'GET /api/chat/sessions/s1': history,
+      'GET /api/chat/sessions': { folders: [], sessions: [session] },
+      'GET /api/runs': { waiting: [], past: [], awaiting_review_count: 0 },
+      'GET /api/stories': [],
+    })
     const user = userEvent.setup()
     renderConsole('/console/s1')
     await user.type(await screen.findByLabelText('Your question'), 'half a question')
+    expect(screen.getByRole('region', { name: 'Chats' })).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: /Super-Pilot/ }))
     expect(screen.getByTestId('where')).toHaveTextContent('/console/s1?mode=M2') // still on the same chat
-    expect(screen.getByLabelText('Task inspector')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Tasks' })).toBeVisible() // the left list is now the tasks
+    expect(screen.getByRole('region', { name: 'Chats', hidden: true })).not.toBeVisible()
     expect(screen.getByRole('region', { name: 'Co-Pilot chat', hidden: true })).not.toBeVisible()
 
     await user.click(screen.getByRole('button', { name: /Co-Pilot/ }))
     expect(screen.getByTestId('where')).toHaveTextContent(/^\/console\/s1$/)
     expect(screen.getByLabelText('Your question')).toHaveValue('half a question') // the draft survived
     expect(screen.getByText('Which stories are open?')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Task inspector')).not.toBeInTheDocument() // only Super-Pilot has one
+    expect(screen.getByRole('region', { name: 'Chats' })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Tasks', hidden: true })).not.toBeVisible()
   })
 
   it('says in one line what each mode does', async () => {
