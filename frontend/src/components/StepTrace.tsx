@@ -1,5 +1,6 @@
 import type { Step } from '../api/types'
 import { traceLines } from '../lib/steps'
+import Spinner from './Spinner'
 
 const STATE_WORDS = { done: 'done', running: 'in progress', failed: 'failed', retry: 'retrying' }
 
@@ -11,7 +12,7 @@ export default function StepTrace({ steps }: { steps: Step[] }) {
     <ol className="trace" aria-label="Steps so far">
       {lines.map((line) => (
         <li key={line.id} className={line.state}>
-          <span className="dot" aria-hidden="true" />
+          {line.state === 'running' ? <Spinner /> : <span className="dot" aria-hidden="true" />}
           <span>
             {line.text}
             <span className="sr-only"> ({STATE_WORDS[line.state]})</span>

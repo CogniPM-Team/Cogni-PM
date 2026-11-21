@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api/client'
 import type { StartedRun, StartRunBody, Story } from '../api/types'
 import { useFetch } from '../api/useFetch'
+import Spinner from './Spinner'
 
 const MAX_INPUT = 200_000 // the API's limit
 
@@ -125,6 +126,7 @@ export default function TaskStarter({ onStarted }: Props) {
 
         {error && <p className="error">{error}</p>}
         <button type="submit" className="primary" disabled={!ready || busy}>
+          {busy && <Spinner />}
           {busy ? 'Starting...' : 'Start the task'}
         </button>
       </form>

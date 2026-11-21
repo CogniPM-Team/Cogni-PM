@@ -44,6 +44,33 @@ describe('Agent console', () => {
     expect(calls[1].body).toEqual({ message: 'And open ones?', session_id: 's1' })
   })
 
+  it('shows the answer with its formatting, and a spinner while the Co-Pilot is working', async () => {
+    let finish: (value: Response) => void = () => {}
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => (finish = resolve))))
+    const user = userEvent.setup()
+    renderConsole()
+
+    await user.type(screen.getByLabelText('Your question'), 'how many tasks?')
+    await user.click(screen.getByRole('button', { name: 'Ask' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('The Co-Pilot is looking at Jira')
+    expect(screen.getByRole('button', { name: 'Working...' })).toBeDisabled()
+
+    finish(
+      jsonResponse({
+        session_id: 's1',
+        answer: 'There are **0** issues of type **Task**.\n* **Stories:** 12\n* **Epic:** 1',
+        tool_calls: [],
+      }),
+    )
+
+    expect(await screen.findByText('0', { selector: 'strong' })).toBeInTheDocument()
+    expect(screen.getByText('Stories:', { selector: 'strong' })).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument() // no raw asterisks left on screen
+  })
+
   it('will not start a task without input, and says plainly that nothing reaches Jira until approval', async () => {
     mockApi({})
     const user = userEvent.setup()

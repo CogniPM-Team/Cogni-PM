@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { api } from '../api/client'
 import type { ChatResult } from '../api/types'
 import { plural } from '../lib/format'
+import Markdown from './Markdown'
+import Spinner from './Spinner'
 
 interface Message {
   role: 'user' | 'agent'
@@ -46,11 +48,16 @@ export default function ChatPanel() {
       <div className="chat-thread" aria-live="polite">
         {messages.map((m, i) => (
           <div key={i} className={`bubble ${m.role}`}>
-            {m.text}
+            {m.role === 'agent' ? <Markdown text={m.text} /> : m.text}
             {m.role === 'agent' && m.reads ? <span className="reads">Read Jira {plural(m.reads, 'time')}</span> : null}
           </div>
         ))}
-        {busy && <div className="bubble muted">Looking at Jira...</div>}
+        {busy && (
+          <div className="bubble agent working" role="status">
+            <Spinner />
+            <span>The Co-Pilot is looking at Jira...</span>
+          </div>
+        )}
       </div>
       {error && <p className="error">{error}</p>}
       <form
@@ -73,7 +80,7 @@ export default function ChatPanel() {
           placeholder="Ask a question about the project"
         />
         <button type="submit" className="primary" disabled={busy || !draft.trim()}>
-          Ask
+          {busy ? 'Working...' : 'Ask'}
         </button>
       </form>
     </section>
