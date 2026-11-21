@@ -48,7 +48,7 @@ jobs:
         env:
           POSTGRES_USER: cognipm
           POSTGRES_PASSWORD: cognipm
-          POSTGRES_DB: cognipm
+          POSTGRES_DB: cognipm_test
         ports:
           - 5432:5432
         options: >-
@@ -57,7 +57,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://cognipm:cognipm@localhost:5432/cognipm
+      DATABASE_URL: postgresql://cognipm:cognipm@localhost:5432/cognipm_test
       REQUIRE_DB: "1" # no database = a failure, never a silent skip
     steps:
       - uses: actions/checkout@v7

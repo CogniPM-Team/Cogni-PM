@@ -3,8 +3,8 @@
 Database tests run against a real Postgres, never a mock: the schema comes from the
 same migrations production applies. Where the database comes from, in order:
 
-1. DATABASE_URL, if set and reachable (CI points this at a service container;
-   `docker compose up -d db` locally).
+1. DATABASE_URL, if set and reachable (CI points this at a service container; locally use a Docker
+   container). Its database name must contain "test", because every test drops and rebuilds the schema.
 2. An embedded server from the optional `pgserver` package (`pip install -e ".[embedded-db]"`).
 3. Otherwise DB tests are skipped - unless REQUIRE_DB=1 (set in CI), which turns
    "no database" into a failure so a misconfigured pipeline can't pass silently.
@@ -20,6 +20,7 @@ import pytest
 from psycopg.rows import dict_row
 
 from cognipm.db.migrate import apply_migrations
+from tests.db_safety import is_safe_for_tests, refusal
 
 
 def _reachable(url: str) -> bool:
@@ -33,6 +34,8 @@ def _reachable(url: str) -> bool:
 @pytest.fixture(scope="session")
 def database_url():
     url = os.environ.get("DATABASE_URL")
+    if url and not is_safe_for_tests(url):
+        pytest.fail(refusal(url))  # never fall back quietly: the point is to tell the person
     if url and _reachable(url):
         yield url
         return
