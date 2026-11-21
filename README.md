@@ -36,8 +36,8 @@ backend/
     rag/                embeddings + pgvector retrieval                  (to build)
   scripts/              check_connection.py, verify_write.py, demo_stage.py: live smoke tests
   tests/                pytest
-frontend/               React + TypeScript + Vite                        (to build)
-  src/                  api/ assets/ components/ hooks/ lib/ pages/ styles/ - folders only
+frontend/               React + TypeScript + Vite                        <- implemented and tested
+  src/                  api/ components/ hooks/ lib/ pages/ styles/ test/
 docs/architecture.md    the design decisions you need before writing code
 docs/phases.md          the build plan, phase by phase
 .mcp.json               lets Claude Code drive the gateway at M1, M2 or M3 by hand
@@ -81,7 +81,8 @@ Read [docs/architecture.md](docs/architecture.md) first. The pieces are fairly i
 3. **API** (`backend/cognipm/api/`): built. Run it with `uvicorn cognipm.api.main:app --reload` from `backend/`;
    the interactive docs are at `/docs`. No login yet: do not expose it publicly.
 4. **Orchestrator** (`backend/cognipm/orchestrator/`): LangGraph, calling the gateway as an MCP client.
-5. **Frontend** (`frontend/`): see [frontend/README.md](frontend/README.md).
+5. **Frontend** (`frontend/`): built (Agent console, Approvals, Activity log). See
+   [frontend/README.md](frontend/README.md); `npm run dev` with the backend running.
 6. **RAG** (`backend/cognipm/rag/`): after the data model exists.
 
 How we work (branches, PRs, checks): [CONTRIBUTING.md](CONTRIBUTING.md). Working agreements for

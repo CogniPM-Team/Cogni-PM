@@ -203,6 +203,19 @@ class ModeOut(BaseModel):
     tool_help: dict[str, str]
 
 
+class ProjectOut(BaseModel):
+    key: str = Field(description="The Jira project every run works in")
+    jira_url: str = Field(description="The project's page in Jira")
+    jira_host: str
+
+
+class StoryOut(BaseModel):
+    key: str
+    summary: str
+    status: str
+    url: str
+
+
 class ApplyProblem(BaseModel):
     """The body of a 502 when Jira refuses part-way through approving: exactly what happened."""
 

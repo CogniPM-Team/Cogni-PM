@@ -567,6 +567,31 @@
         "title": "ParentStory",
         "type": "object"
       },
+      "ProjectOut": {
+        "properties": {
+          "jira_host": {
+            "title": "Jira Host",
+            "type": "string"
+          },
+          "jira_url": {
+            "description": "The project's page in Jira",
+            "title": "Jira Url",
+            "type": "string"
+          },
+          "key": {
+            "description": "The Jira project every run works in",
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "jira_url",
+          "jira_host"
+        ],
+        "title": "ProjectOut",
+        "type": "object"
+      },
       "RejectBody": {
         "properties": {
           "comment": {
@@ -1055,6 +1080,34 @@
         "title": "StepOut",
         "type": "object"
       },
+      "StoryOut": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "summary",
+          "status",
+          "url"
+        ],
+        "title": "StoryOut",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1322,6 +1375,28 @@
         "summary": "List Modes",
         "tags": [
           "modes"
+        ]
+      }
+    },
+    "/api/project": {
+      "get": {
+        "description": "Which Jira project this CogniPM works in, for the sidebar and the 'Open in Jira' link.",
+        "operationId": "project_api_project_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Project",
+        "tags": [
+          "stories"
         ]
       }
     },
@@ -1650,6 +1725,32 @@
         "summary": "Rerun",
         "tags": [
           "runs"
+        ]
+      }
+    },
+    "/api/stories": {
+      "get": {
+        "description": "Open Stories in the configured project, newest first. Reads Jira; changes nothing.",
+        "operationId": "list_stories_api_stories_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StoryOut"
+                  },
+                  "title": "Response List Stories Api Stories Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Stories",
+        "tags": [
+          "stories"
         ]
       }
     }

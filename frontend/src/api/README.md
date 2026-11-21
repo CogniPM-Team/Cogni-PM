@@ -11,17 +11,13 @@ cd backend
 python scripts/export_openapi.py
 ```
 
-## Types (Phase 6)
+## Types
 
-When `frontend/package.json` exists, add `openapi-typescript` as a dev dependency and a script that generates
-`schema.d.ts` from `openapi.json`, for example:
-
-```bash
-npx openapi-typescript src/api/openapi.json -o src/api/schema.d.ts
-```
-
-Build the typed client in this folder on top of those types, so a field renamed in the backend is a compile
-error here. Nothing in this folder talks to Jira or the model: it only calls the backend under `/api`.
+`schema.d.ts` is generated from `openapi.json` by `npm run gen:api` (run it from `frontend/`). Do not edit it by
+hand. `types.ts` gives the generated types short names, and `client.ts` is the typed fetch wrapper, so a field
+renamed in the backend is a compile error in the frontend. Commit both generated files; CI fails if
+`schema.d.ts` is out of date. Nothing in this folder talks to Jira or the model: it only calls the backend
+under `/api`.
 
 The one non-obvious endpoint is `GET /api/runs/{id}/events`, a Server-Sent Events stream (`EventSource`). It
 sends one `step` event per recorded step and an `end` event when the run is no longer running; the browser

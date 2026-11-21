@@ -3,7 +3,7 @@
 The decisions below are settled; they come from a working prototype and the Phase 0 decisions in
 `phases.md`. If you think one is wrong, say so in a PR or issue rather than quietly building around it.
 
-Status: the Jira client, the Postgres schema, the mode-scoped gateway, the orchestrator, the guardrails and the API are built (Phases 1 to 5). The
+Status: the Jira client, the Postgres schema, the mode-scoped gateway, the orchestrator, the guardrails, the API and the frontend are built (Phases 1 to 6). The
 diagrams show the target design; each box is labelled with the phase in `phases.md` that builds it.
 
 ## What this is, and is not
@@ -308,7 +308,7 @@ study measures edit rate, rejection rate and time to decision.
 | `backend/cognipm/orchestrator/` | LangGraph runs (P1, P2, M1 chat) that call the gateway over stdio | 3 (built) |
 | `backend/cognipm/api/` | FastAPI control-plane API; its OpenAPI schema is `frontend/src/api/openapi.json` | 5 (built) |
 | `backend/cognipm/automations/` | M3 automations: grants, poll scheduler, undo | 8 |
-| `frontend/src/` | React app: Agent console, Approvals, Activity log | 6 |
+| `frontend/src/` | React app: Agent console, Approvals, Activity log | 6 (built) |
 
 ## Known gaps and RAG
 

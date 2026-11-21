@@ -455,6 +455,33 @@ in the UI, not the canvas's L1 to L4 labels.
 - Append-only table grouped by run: time, actor (human or which agent), action, mode at the time, outcome;
   filters as in Phase 5; detail pane with approver, rationale and sources; CSV export (needed for the evaluation).
 
+**Status (21 Nov): built.** All four sub-phases are in. 30 frontend tests, the type check, lint and the production
+build pass, and the backend still passes its 214 tests. I looked at the real screens in a browser against the
+real API with seeded data (never confirming an approval, since that API was wired to your live Jira): the review
+page with highlighted quotes, ticking a draft and the confirmation naming how many issues it creates, the
+approvals queue, the activity log and the console. What was built:
+- **6a Scaffold:** Vite, React 19, TypeScript, React Router, ESLint, Vitest. The API client's types are generated
+  from the backend's OpenAPI schema (`npm run gen:api`), so a renamed field is a compile error. CI's `frontend`
+  job is on for real (the guard steps are gone, and it checks `schema.d.ts` is current) and Dependabot watches
+  npm. CI now uses Node 24, because `jsdom` needs 22.22+ or 24.15+. TypeScript is pinned to 5.9 because
+  `openapi-typescript` does not support 6.
+- **6b Agent console:** a mode selector (Co-Pilot, Super-Pilot, and Auto-Pilot shown but disabled); a chat that
+  keeps its conversation; a task starter for P1 (paste text or load a `.txt`/`.md` file) and P2 (a picker of open
+  stories); a live step trace over Server-Sent Events in plain sentences; an inline summary with a link to the
+  review when drafts are ready; and the task inspector (status, work so far, waiting for you, created in Jira,
+  model use). Backend additions to support it: `GET /api/stories` and `GET /api/project`.
+- **6c Approvals:** the queue (waiting first, oldest first, then earlier runs) and the review page. Built against
+  review fatigue (H6): nothing ticked by default, no approve-all, each draft's quotes highlighted in the original
+  input (hovering a draft strengthens its quotes), assumptions flagged, one explicit confirmation that names how
+  many issues will be created and how many are left out, then links to the created issues. Per-draft editing
+  (title, description, criteria, labels, type) with the agent's original shown beside it; Reject and Regenerate
+  each take a note; a Jira failure part-way shows exactly what was and was not created.
+- **6d Activity log:** filters matching the API, plain-word actions, detail and before/after on request, a
+  group-by-run view, and a CSV export that defuses spreadsheet formulas.
+- **Not done:** the typed client has no login (H3, Phase 7); the editor has no parent picker, because a draft's
+  parent is fixed by the run; Auto-Pilot is disabled until Phase 8; accessibility was designed in (labels, roles,
+  focus, reduced motion) but not audited with a screen reader.
+
 **Done when (MVP complete):** a PM can paste requirements in the console, review and approve the drafted stories
 in Approvals, break one down into tasks, see the created issues in Jira, and trace every step in the Activity
 log, with a recorded end-to-end demo. This is the paper's "end of November" MVP: LLM integration, approval

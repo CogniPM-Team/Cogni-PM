@@ -539,3 +539,29 @@ def test_a_run_left_running_by_a_restart_is_marked_failed_not_left_running_forev
     rows = {r["id"]: r for r in conn.execute("SELECT id, status, comment FROM runs").fetchall()}
     assert rows["a"]["status"] == "failed" and "restarted" in rows["a"]["comment"]
     assert rows["b"]["status"] == "awaiting_review"  # a run waiting for a person is untouched
+
+
+# ---------- the story picker ----------
+
+
+def test_the_story_picker_lists_open_stories_for_a_p2_run(conn):
+    api = build_api(
+        conn, jira_options={"open_issues": {"TEST-7": "Reset password", "TEST-8": "Export invoices"}}
+    )
+    with TestClient(app) as client:
+        stories = client.get("/api/stories").json()
+    app.dependency_overrides.clear()
+
+    assert [s["key"] for s in stories] == ["TEST-7", "TEST-8"]
+    assert stories[0]["summary"] == "Reset password" and stories[0]["url"].endswith("/browse/TEST-7")
+    assert creates(api.seen) == []
+
+
+def test_the_project_endpoint_names_the_jira_project_for_the_sidebar(api):
+    body = api.client.get("/api/project").json()
+
+    assert body == {
+        "key": "TEST",
+        "jira_url": "https://example.atlassian.net/browse/TEST",
+        "jira_host": "example.atlassian.net",
+    }
