@@ -5,17 +5,19 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cognipm-backend"
 version = "0.1.0"
-description = "CogniPM backend: Jira client, Postgres schema and mode-scoped MCP gateway; orchestrator and API to come"
+description = "CogniPM backend: Jira client, Postgres schema and mode-scoped MCP gateway; orchestrator and API"
 requires-python = ">=3.11"
 # Only what the code uses today. Add a dependency in the same PR that first imports it.
-# Intended stack for the rest (see README): FastAPI.
 dependencies = [
+    "fastapi>=0.141.1",  # the control-plane API (Phase 5)
     "google-genai>=2.22.0",  # Gemini, the orchestrator's model (Phase 3)
     "httpx>=0.28.1",
     "langgraph>=1.0",  # the orchestrator's graphs (Phase 3)
     "mcp>=2.1.1",  # the gateway server (Phase 2) and the orchestrator's client (Phase 3)
     "psycopg[binary]>=3.2",  # PostgreSQL driver (Phase 2)
+    "pydantic>=2.0",  # request, response and draft schemas
     "python-dotenv>=1.2.3",
+    "uvicorn>=0.52.4",  # serves the API (Phase 5)
 ]
 
 [project.optional-dependencies]
@@ -36,6 +38,7 @@ include = ["cognipm*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
 line-length = 110
