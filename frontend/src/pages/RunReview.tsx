@@ -8,7 +8,7 @@ import { ModePill, StatusPill } from '../components/Pills'
 import SourceText from '../components/SourceText'
 import StepTrace from '../components/StepTrace'
 import { useRunEvents } from '../hooks/useRunEvents'
-import { ago, duration, formatTime, plural, TASK_NAMES } from '../lib/format'
+import { actorLabel, ago, duration, formatTime, plural, TASK_NAMES } from '../lib/format'
 
 export default function RunReview() {
   const { id = '' } = useParams()
@@ -109,7 +109,7 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
             )}
           </dd>
           <dt>Drafted by</dt>
-          <dd>{run.agent}</dd>
+          <dd>{actorLabel(run.agent)}</dd>
           {run.ready_at && (
             <>
               <dt>Ready for review</dt>

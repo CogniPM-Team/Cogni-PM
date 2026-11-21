@@ -1,7 +1,7 @@
 import type { AuditRow } from '../api/types'
 import { AUDIT, draft, NOTES, RESET, step } from '../test/fixtures'
 import { auditToCsv, cell } from './csv'
-import { actionLabel, actorLabel, ago, duration, plural } from './format'
+import { actionLabel, actorLabel, ago, describeDetail, duration, plural } from './format'
 import { segments } from './spans'
 import { traceLines } from './steps'
 
@@ -25,11 +25,44 @@ describe('format', () => {
 
   it('names who did something and what, the way a PM would', () => {
     expect(actorLabel('human:reviewer')).toBe('You')
-    expect(actorLabel('agent:orchestrator:gemini-3.6-flash')).toBe('Agent (gemini-3.6-flash)')
-    expect(actorLabel('agent:orchestrator:gemini-3.6-flash:chat')).toBe('Agent (gemini-3.6-flash)')
+    expect(actorLabel('agent:orchestrator:gemini-3.6-flash')).toBe('Gemini 3.6 Flash Agent')
+    expect(actorLabel('orchestrator:gemini-3.6-flash:chat')).toBe('Gemini 3.6 Flash Agent') // chat rows have no agent: prefix
+    expect(actorLabel('agent:claude-code')).toBe('Claude Code Agent')
+    expect(actorLabel('agent:planning')).toBe('Planning Agent')
     expect(actionLabel('create_issue')).toBe('Created a Jira issue')
     expect(actionLabel('guardrail:no_duplicate')).toBe('Refused by no duplicate')
     expect(actionLabel('something_new')).toBe('something new')
+  })
+})
+
+describe('describeDetail', () => {
+  it('shows a chat turn as a short session pill and the number of reads', () => {
+    const id = 'f4a7462c-a5e6-4348-831c-517773551b1e'
+
+    expect(describeDetail('chat_turn', `session ${id}; 3 read(s)`)).toEqual([
+      'Session ',
+      { pill: 'f4a7462c', title: id },
+      ' · 3 reads of Jira',
+    ])
+    expect(describeDetail('chat_turn', `session ${id}; 1 read(s)`)?.[2]).toBe(' · 1 read of Jira')
+  })
+
+  it('puts Jira keys in pills and drops internal ids and field names from the wording', () => {
+    expect(describeDetail('create_issue', 'backlog_item draft 4f1c-2 -> MCP-15')).toEqual([
+      'Created ',
+      { pill: 'MCP-15' },
+      ' from a backlog item draft',
+    ])
+    expect(describeDetail('start_run', 'task_type=p1 scope=planning call notes')).toEqual(['Draft backlog · planning call notes'])
+    expect(describeDetail('propose_backlog_item', 'backlog_item: Password reset')).toEqual(['Password reset'])
+    expect(describeDetail('edit_draft', "backlog_item abc-1: changed ['summary', 'acceptance_criteria']")).toEqual([
+      'Changed summary, acceptance criteria',
+    ])
+  })
+
+  it('has nothing to say about text it does not recognise, so the raw detail is shown', () => {
+    expect(describeDetail('approve', '1 issue(s) created')).toBeNull()
+    expect(describeDetail('chat_turn', null)).toBeNull()
   })
 })
 

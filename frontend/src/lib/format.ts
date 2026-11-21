@@ -35,12 +35,52 @@ export function duration(seconds: number): string {
   return `${(minutes / 60).toFixed(1)} h`
 }
 
-/** Who did it, in words a PM would use. Actors look like `human:reviewer` or `agent:orchestrator:<model>[:chat]`. */
+/** "gemini-3.6-flash" becomes "Gemini 3.6 Flash". */
+export function prettyName(raw: string): string {
+  return raw
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+/**
+ * Who did it, in words a PM would use. The stored actor is `human:reviewer`, or an agent written with or
+ * without an `agent:` prefix: `orchestrator:<model>[:chat]`, `claude-code`, and so on.
+ */
 export function actorLabel(actor: string): string {
   if (actor.startsWith('human:')) return 'You'
-  if (actor.startsWith('agent:orchestrator:')) return `Agent (${actor.split(':')[2]})`
-  if (actor.startsWith('agent:')) return `Agent (${actor.slice(6)})`
-  return actor
+  const agent = actor.replace(/^agent:/, '')
+  const parts = agent.split(':')
+  const name = parts[0] === 'orchestrator' && parts[1] ? parts[1] : parts[0]
+  return `${prettyName(name)} Agent`
+}
+
+export type DetailPart = string | { pill: string; title?: string }
+
+const DRAFT_KINDS: Record<string, string> = { backlog_item: 'backlog item', subtask: 'sub-task', task: 'task' }
+
+/**
+ * An activity entry's detail in plain words, with ids and keys as small pills. Returns null when there is
+ * nothing friendlier to say, and the raw text is shown instead.
+ */
+export function describeDetail(action: string, detail: string | null): DetailPart[] | null {
+  if (!detail) return null
+  let m: RegExpExecArray | null
+  if (action === 'chat_turn' && (m = /^session ([\w-]+); (\d+) read\(s\)$/.exec(detail))) {
+    return ['Session ', { pill: m[1].slice(0, 8), title: m[1] }, ` · ${plural(Number(m[2]), 'read')} of Jira`]
+  }
+  if (action === 'create_issue' && (m = /^(\w+) draft [\w-]+ -> (\S+)$/.exec(detail))) {
+    return ['Created ', { pill: m[2] }, ` from a ${DRAFT_KINDS[m[1]] ?? m[1]} draft`]
+  }
+  if (action === 'start_run' && (m = /^task_type=(\w+) scope=(.*)$/.exec(detail))) {
+    return [`${TASK_NAMES[m[1]] ?? m[1]} · ${m[2]}`]
+  }
+  if (action.startsWith('propose_') && (m = /^\w+: (.*)$/.exec(detail))) return [m[1]]
+  if (action === 'edit_draft' && (m = /^\w+ [\w-]+: changed \[(.*)\]$/.exec(detail))) {
+    return [`Changed ${m[1].replaceAll("'", '').replaceAll('_', ' ')}`]
+  }
+  return null
 }
 
 const ACTIONS: Record<string, string> = {

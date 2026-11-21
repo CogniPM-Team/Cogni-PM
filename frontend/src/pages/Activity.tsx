@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import type { AuditFilter, AuditPage, AuditRow } from '../api/types'
 import { useFetch } from '../api/useFetch'
 import { auditToCsv } from '../lib/csv'
-import { actionLabel, actorLabel, formatTime, MODE_NAMES } from '../lib/format'
+import { actionLabel, actorLabel, describeDetail, formatTime, MODE_NAMES } from '../lib/format'
 
 const FILTERS: { id: AuditFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -43,7 +43,19 @@ function Row({ row, open, onToggle }: { row: AuditRow; open: boolean; onToggle: 
       {open && (
         <tr className="activity-detail">
           <td colSpan={6}>
-            {row.detail && <p style={{ margin: 0 }}>{row.detail}</p>}
+            {row.detail && (
+              <p style={{ margin: 0 }}>
+                {(describeDetail(row.action, row.detail) ?? [row.detail]).map((part, index) =>
+                  typeof part === 'string' ? (
+                    part
+                  ) : (
+                    <span key={index} className="tag mono" title={part.title}>
+                      {part.pill}
+                    </span>
+                  ),
+                )}
+              </p>
+            )}
             {row.before && <pre>Before: {JSON.stringify(row.before, null, 2)}</pre>}
             {row.after && <pre>After: {JSON.stringify(row.after, null, 2)}</pre>}
           </td>
