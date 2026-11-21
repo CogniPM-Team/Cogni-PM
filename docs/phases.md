@@ -513,6 +513,11 @@ own address (`/console/<id>`) with its full history (and "Read Jira N times"), *
   **Tasks** (recent runs with status, the ones waiting for you first, each opening its review). The Task inspector
   is now a slim summary strip above the run (it appears once a task exists) instead of a third column that popped
   in and out. Both modes use the same centred reading column.
+- Full-space layout (21 Nov, third pass): the console is no longer capped to a reading width. The Co-Pilot's
+  conversation and question box span the whole work area (with the mode tabs and description on one line to save
+  height). Super-Pilot is two panes, each as tall as the window: the task form on the left (the text box stretches
+  to fill the height) and live progress and results on the right (a placeholder until a task starts). Below about
+  1250px the two panes stack and the page scrolls. Other pages keep their 1280px cap.
 - Not done: search across chats and nested folders.
 
 **Done when (MVP complete):** a PM can paste requirements in the console, review and approve the drafted stories

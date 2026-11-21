@@ -84,6 +84,7 @@ h3 { font-size: var(--text-lg); font-weight: 500; margin: 0; }
 main { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 32px; }
 /* The page fills the space under the top bar; a page with more to show than fits just scrolls the main area. */
 .page { height: 100%; max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; }
+.page.wide { max-width: none; } /* the console uses the whole width */
 .site-footer { padding: 16px 32px; border-top: 1px solid var(--border-soft); font-size: var(--text-xs); color: var(--text-muted); }
 .page-subtitle { margin: 0 0 20px; color: var(--text-muted); max-width: 46rem; }
 
@@ -174,7 +175,7 @@ tbody tr:last-child td { border-bottom: none; }
 .console-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .console-body { flex: 1; min-height: 0; overflow-y: auto; }
 .chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.console-head { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 760px; margin: 0 auto 16px; }
+.console-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 0 0 14px; }
 .mode-tabs { display: inline-flex; align-self: flex-start; gap: 2px; padding: 4px; background: var(--border-soft); border-radius: 12px; }
 .mode-tabs button { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 16px; border: none; border-radius: 9px; background: transparent; color: var(--text-muted); line-height: 34px; transition: background 0.15s, color 0.15s; }
 .mode-tabs button::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--lv, var(--control)); opacity: 0.45; }
@@ -183,11 +184,23 @@ tbody tr:last-child td { border-bottom: none; }
 .mode-tabs button[aria-pressed='true']::before { opacity: 1; }
 .mode-tabs button:disabled { background: transparent; color: var(--control); }
 .soon { padding: 0 6px; border-radius: 8px; background: var(--border); color: var(--text-muted); font-size: 0.6875rem; font-weight: 600; line-height: 16px; }
-.mode-hint { margin: 0; color: var(--text-muted); font-size: var(--text-sm); max-width: 46rem; min-height: 1.4em; }
+.mode-hint { flex: 1; min-width: 14rem; margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
 /* Switching modes: the pane that appears fades up a little, so the change reads as one thing replacing another. */
 .mode-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; animation: pane-in 0.2s ease-out; }
 .mode-pane[hidden] { display: none; }
-.console-body { display: block; overflow-y: auto; padding-bottom: 8px; }
+.console-body { display: flex; flex-direction: column; }
+/* Super-Pilot: the task on the left and its progress and results on the right, each as tall as the space allows. */
+.task-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.task-col { min-width: 0; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.task-card { flex: 1; display: flex; flex-direction: column; margin-bottom: 0; min-height: min-content; }
+.task-form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.task-form .grow, .fieldset.grow { flex: 1; min-height: 8rem; }
+.task-form label.field.grow textarea { flex: 1; resize: none; min-height: 6rem; }
+.fieldset { border: none; padding: 0; margin: 0 0 12px; display: flex; flex-direction: column; min-width: 0; }
+.fieldset legend { font-weight: 500; margin-bottom: 6px; padding: 0; }
+.fieldset .story-list { flex: 1; max-height: none; min-height: 6rem; }
+.results-empty { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-style: dashed; margin-bottom: 0; }
+.results-empty p { max-width: 24rem; }
 .console-body[hidden] { display: none; }
 @keyframes pane-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .mode-pane { animation: none; } .mode-tabs button { transition: none; } }
@@ -195,7 +208,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* The conversation: a centred column that is comfortable to read, with the question box pinned below it. */
 .chat-title { margin: 0 0 4px; padding: 0 4px; font-size: var(--text-lg); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 4px 16px; }
-.chat-inner { width: 100%; max-width: 760px; margin: 0 auto; }
+.chat-inner { width: 100%; }
 .chat-empty { text-align: center; padding: 8vh 0 24px; }
 .chat-empty h2 { margin: 0 0 6px; font-size: var(--text-xl); }
 .chat-empty p { margin: 0 0 20px; color: var(--text-muted); }
@@ -214,7 +227,7 @@ tbody tr:last-child td { border-bottom: none; }
 .composer button { align-self: flex-end; border-radius: 12px; }
 .composer-hint { margin: 6px 8px 0; font-size: var(--text-xs); color: var(--text-faint); }
 .bubble { max-width: 100%; padding: 12px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border-soft); line-height: 1.6; }
-.bubble.user { max-width: 88%; background: var(--brand-wash); border-color: transparent; white-space: pre-wrap; }
+.bubble.user { max-width: min(80%, 52rem); background: var(--brand-wash); border-color: transparent; white-space: pre-wrap; }
 .bubble.working { display: flex; align-items: center; gap: 10px; color: var(--text-muted); }
 .markdown > :first-child { margin-top: 0; }
 .markdown > :last-child { margin-bottom: 0; }
@@ -296,6 +309,14 @@ button.primary .spinner { border-color: rgba(255, 255, 255, 0.35); border-top-co
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 .outcome-refused, .outcome-failed { color: var(--red); font-weight: 500; }
 
+@media (max-width: 1250px) {
+  .console-body { overflow-y: auto; }
+  .task-layout { display: block; flex: none; }
+  .task-col { overflow: visible; margin-bottom: 20px; }
+  .task-card { min-height: 0; }
+  .task-form .grow, .fieldset.grow { flex: none; }
+  .task-form label.field.grow textarea { min-height: 11rem; }
+}
 @media (max-width: 1000px) {
   .review { grid-template-columns: 1fr; }
   .source-pane { position: static; max-height: none; }

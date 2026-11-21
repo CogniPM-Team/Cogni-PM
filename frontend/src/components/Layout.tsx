@@ -77,7 +77,7 @@ export default function Layout() {
           )}
         </header>
         <main>
-          <div className="page">
+          <div className={`page${pathname.startsWith('/console') ? ' wide' : ''}`}>
             <Outlet />
           </div>
         </main>

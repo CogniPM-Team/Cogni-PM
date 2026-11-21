@@ -58,7 +58,7 @@ export default function TaskStarter({ onStarted }: Props) {
   }
 
   return (
-    <section aria-label="Start a task" className="mode-M2">
+    <section aria-label="Start a task" className="mode-M2 card task-card">
       <p className="notice good">
         <span>
           <strong>Nothing is created in Jira until you approve it</strong> in Approvals.
@@ -77,6 +77,7 @@ export default function TaskStarter({ onStarted }: Props) {
       </div>
 
       <form
+        className="task-form"
         onSubmit={(event) => {
           event.preventDefault()
           void start()
@@ -84,12 +85,11 @@ export default function TaskStarter({ onStarted }: Props) {
       >
         {task === 'p1' ? (
           <>
-            <label className="field">
+            <label className="field grow">
               <span>Requirements or meeting notes</span>
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                style={{ minHeight: '11rem' }}
                 placeholder="Paste the text here. Use anonymised or synthetic text if the project is sensitive: it is sent to the AI model."
               />
             </label>
@@ -99,7 +99,7 @@ export default function TaskStarter({ onStarted }: Props) {
             </label>
           </>
         ) : (
-          <fieldset className="fieldset" style={{ border: 'none', padding: 0, margin: '0 0 12px' }}>
+          <fieldset className="fieldset grow">
             <legend style={{ fontWeight: 500, marginBottom: 6 }}>Which story?</legend>
             {stories.loading && <p className="muted">Loading stories...</p>}
             {stories.error && <p className="error">Could not load stories: {stories.error.message}</p>}

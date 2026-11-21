@@ -68,21 +68,28 @@ export default function AgentConsole() {
           <ChatPanel chatId={chatId} />
         </div>
         <div className="mode-pane console-body" hidden={mode !== 'M2'}>
-          <div className="chat-inner">
-            <TaskStarter onStarted={(id, task) => setRuns((r) => [{ id, task }, ...r])} />
-            {runs.length > 0 && (
-              <section aria-label="Runs this session" style={{ marginTop: 8 }}>
-                <TaskInspector snapshot={snapshot} />
-                <h2>This session</h2>
-                {runs.map((run, index) => (
-                  <RunProgress key={run.id} runId={run.id} task={run.task} latest={index === 0} onSnapshot={onSnapshot} />
-                ))}
-              </section>
-            )}
+          <div className="task-layout">
+            <div className="task-col">
+              <TaskStarter onStarted={(id, task) => setRuns((r) => [{ id, task }, ...r])} />
+            </div>
+            <div className="task-col">
+              {runs.length === 0 ? (
+                <div className="card results-empty">
+                  <h3>Progress and results</h3>
+                  <p className="muted">Start a task and its steps appear here as they happen, then the drafts for you to review.</p>
+                </div>
+              ) : (
+                <section aria-label="Runs this session">
+                  <TaskInspector snapshot={snapshot} />
+                  {runs.map((run, index) => (
+                    <RunProgress key={run.id} runId={run.id} task={run.task} latest={index === 0} onSnapshot={onSnapshot} />
+                  ))}
+                </section>
+              )}
+            </div>
           </div>
         </div>
       </div>
-
     </div>
   )
 }
