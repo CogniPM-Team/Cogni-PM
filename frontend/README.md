@@ -8,7 +8,7 @@ frontend/
   public/            logo and favicon
   src/
     api/             typed client for the backend; openapi.json (exported by the backend) and schema.d.ts (generated)
-    components/      Layout, DraftCard, SourceText, StepTrace, ChatPanel, TaskStarter, RunProgress, TaskInspector, Pills
+    components/      Layout, ChatSidebar, RowMenu, ChatPanel, Markdown, Spinner, DraftCard, SourceText, StepTrace, TaskStarter, RunProgress, TaskInspector, Pills
     hooks/           useRunEvents: follows a run's steps over Server-Sent Events
     lib/             pure helpers with no React in them: step wording, quote highlighting, CSV, formatting
     pages/           AgentConsole, Approvals, RunReview, Activity
@@ -57,6 +57,9 @@ Commit both files. A backend test fails if `openapi.json` is stale, and CI fails
   academic L-codes never appear in the UI.
 - **The CSV export defuses formulas.** Log text can come from an agent or a document, so a cell that starts with
   `=`, `+`, `-` or `@` gets a leading apostrophe.
+- **Co-Pilot chats are kept.** The sidebar lists them with folders, rename and delete; everything is stored by the
+  backend, so it is the same after a reload. The open chat is in the address (`/console/<id>`) and the mode is a
+  query (`?mode=M2`).
 - **Auto-Pilot is shown but disabled** until Phase 8.
 
 ## What CI does

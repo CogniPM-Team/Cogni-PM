@@ -4,6 +4,7 @@ import { useFetch } from '../api/useFetch'
 
 function pageTitle(pathname: string): { title: string; crumb: string } {
   if (pathname.startsWith('/approvals/')) return { title: 'Review a run', crumb: 'Approvals › Review' }
+  if (pathname.startsWith('/console')) return { title: 'Agent console', crumb: 'Agent console' }
   const titles: Record<string, string> = {
     '/console': 'Agent console',
     '/approvals': 'Approvals',
@@ -31,22 +32,24 @@ export default function Layout() {
           </span>
         </Link>
 
-        <nav className="side-nav" aria-label="Main">
-          <NavLink to="/console" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-            Agent console
-          </NavLink>
-          <NavLink to="/approvals" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-            Approvals
-            {waiting > 0 && (
-              <span className="nav-badge" aria-label={`${waiting} waiting for you`}>
-                {waiting}
-              </span>
-            )}
-          </NavLink>
-          <NavLink to="/activity" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-            Activity log
-          </NavLink>
-        </nav>
+        <div className="side-scroll">
+          <nav className="side-nav" aria-label="Main">
+            <NavLink to="/console" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+              Agent console
+            </NavLink>
+            <NavLink to="/approvals" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+              Approvals
+              {waiting > 0 && (
+                <span className="nav-badge" aria-label={`${waiting} waiting for you`}>
+                  {waiting}
+                </span>
+              )}
+            </NavLink>
+            <NavLink to="/activity" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+              Activity log
+            </NavLink>
+          </nav>
+        </div>
 
         <div className="jira-card">
           <span>
@@ -74,7 +77,9 @@ export default function Layout() {
           )}
         </header>
         <main>
-          <Outlet />
+          <div className="page">
+            <Outlet />
+          </div>
         </main>
         <footer className="site-footer">
           CogniPM is a research prototype. Agents can make mistakes: drafts, reasoning and chat answers may be

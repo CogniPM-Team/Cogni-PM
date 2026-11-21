@@ -565,3 +565,148 @@ def test_the_project_endpoint_names_the_jira_project_for_the_sidebar(api):
         "jira_url": "https://example.atlassian.net/browse/TEST",
         "jira_host": "example.atlassian.net",
     }
+
+
+# ---------- chat sessions and folders ----------
+
+
+def ask(api, message, answer="An answer.", session_id=None, reads=0):
+    replies = [call_reply("search_issues", jql="project = TEST")] * reads + [text_chat_reply(answer)]
+    api.gemini.models.replies.extend(replies)
+    body = {"message": message} | ({"session_id": session_id} if session_id else {})
+    response = api.client.post("/api/chat", json=body)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def sessions(api):
+    return api.client.get("/api/chat/sessions").json()
+
+
+def test_a_new_chat_is_titled_from_its_first_question_and_listed_with_its_messages(api):
+    first = ask(
+        api,
+        "  Which stories   are still open and not started? Please list every single one of them now  ",
+        reads=1,
+    )
+
+    title = first["title"]
+    assert title.startswith("Which stories are still open and not started? Please list")  # spaces collapsed
+    assert len(title) == 60 and title.endswith("…")  # cut to one short line
+    listing = sessions(api)
+    assert [(s["id"], s["title"], s["message_count"]) for s in listing["sessions"]] == [
+        (first["session_id"], first["title"], 2)
+    ]
+    detail = api.client.get(f"/api/chat/sessions/{first['session_id']}").json()
+    assert [(m["role"], m["reads"]) for m in detail["messages"]] == [
+        ("user", None),
+        ("agent", 1),
+    ]  # reads survive a reload
+    assert detail["messages"][1]["content"] == "An answer."
+
+
+def test_continuing_a_chat_keeps_its_title_and_moves_it_to_the_top_of_the_list(api):
+    older = ask(api, "First chat")
+    newer = ask(api, "Second chat")
+    assert [s["title"] for s in sessions(api)["sessions"]] == ["Second chat", "First chat"]
+
+    again = ask(api, "Still the first one", session_id=older["session_id"])
+
+    assert again["title"] == "First chat"
+    assert [s["title"] for s in sessions(api)["sessions"]] == ["First chat", "Second chat"]
+    assert api.client.get(f"/api/chat/sessions/{newer['session_id']}").json()["session"]["message_count"] == 2
+
+
+def test_a_chat_that_fails_on_its_first_turn_leaves_nothing_behind(api):
+    api.gemini.models.replies.append(lambda contents: (_ for _ in ()).throw(RuntimeError("boom")))
+
+    assert api.client.post("/api/chat", json={"message": "hi"}).status_code == 502
+
+    assert sessions(api) == {"folders": [], "sessions": []}
+
+
+def test_a_chat_can_be_renamed_and_renaming_does_not_reorder_the_list(api):
+    first = ask(api, "First chat")
+    ask(api, "Second chat")
+
+    renamed = api.client.patch(
+        f"/api/chat/sessions/{first['session_id']}", json={"title": "  Open stories  "}
+    )
+
+    assert renamed.json()["title"] == "Open stories"
+    assert [s["title"] for s in sessions(api)["sessions"]] == ["Second chat", "Open stories"]
+    ask(api, "Another question", session_id=first["session_id"])
+    assert (
+        api.client.get(f"/api/chat/sessions/{first['session_id']}").json()["session"]["title"]
+        == "Open stories"
+    )
+
+
+@pytest.mark.parametrize("body", [{}, {"title": ""}, {"title": "   "}, {"title": None}, {"title": "x" * 121}])
+def test_a_nonsense_rename_is_refused(api, body):
+    chat_id = ask(api, "Hello")["session_id"]
+
+    assert api.client.patch(f"/api/chat/sessions/{chat_id}", json=body).status_code == 422
+
+
+def test_chats_can_be_grouped_into_folders_and_taken_out_again(api):
+    chat_id = ask(api, "Hello")["session_id"]
+    folder = api.client.post("/api/chat/folders", json={"name": "  Sprint 12  "})
+    assert folder.status_code == 201 and folder.json()["name"] == "Sprint 12"
+    folder_id = folder.json()["id"]
+
+    moved = api.client.patch(f"/api/chat/sessions/{chat_id}", json={"folder_id": folder_id})
+    assert moved.json()["folder_id"] == folder_id
+    assert sessions(api)["folders"] == [{"id": folder_id, "name": "Sprint 12"}]
+
+    out = api.client.patch(f"/api/chat/sessions/{chat_id}", json={"folder_id": None})
+    assert out.json()["folder_id"] is None and out.json()["title"] == "Hello"  # only the folder changed
+
+
+def test_a_chat_cannot_be_moved_into_a_folder_that_does_not_exist(api):
+    chat_id = ask(api, "Hello")["session_id"]
+
+    assert api.client.patch(f"/api/chat/sessions/{chat_id}", json={"folder_id": "nope"}).status_code == 404
+
+
+def test_folders_can_be_renamed_and_deleting_one_keeps_its_chats(api):
+    chat_id = ask(api, "Hello")["session_id"]
+    folder_id = api.client.post("/api/chat/folders", json={"name": "Old"}).json()["id"]
+    api.client.patch(f"/api/chat/sessions/{chat_id}", json={"folder_id": folder_id})
+    assert api.client.patch(f"/api/chat/folders/{folder_id}", json={"name": "New"}).json()["name"] == "New"
+
+    assert api.client.delete(f"/api/chat/folders/{folder_id}").status_code == 204
+
+    listing = sessions(api)
+    assert listing["folders"] == []
+    assert [(s["title"], s["folder_id"]) for s in listing["sessions"]] == [
+        ("Hello", None)
+    ]  # kept, now ungrouped
+
+
+@pytest.mark.parametrize("name", ["", "   "])
+def test_a_folder_needs_a_name(api, name):
+    assert api.client.post("/api/chat/folders", json={"name": name}).status_code in (422,)
+    assert api.client.post("/api/chat/folders", json={}).status_code == 422
+
+
+def test_deleting_a_chat_removes_its_messages_for_good_and_leaves_no_words_in_the_log(api):
+    chat_id = ask(api, "A private question about payroll")["session_id"]
+    ask(api, "Another", session_id=chat_id)
+
+    assert api.client.delete(f"/api/chat/sessions/{chat_id}").status_code == 204
+
+    assert sessions(api)["sessions"] == []
+    assert api.client.get(f"/api/chat/sessions/{chat_id}").status_code == 404
+    assert api.conn.execute("SELECT COUNT(*) AS n FROM chat_messages").fetchone() == {"n": 0}
+    log = api.client.get("/api/audit").json()["rows"]
+    assert "delete_chat" in {r["action"] for r in log}
+    assert "payroll" not in str(log)  # the audit log never held the question, and still does not
+
+
+def test_unknown_chats_and_folders_are_404s(api):
+    assert api.client.get("/api/chat/sessions/nope").status_code == 404
+    assert api.client.patch("/api/chat/sessions/nope", json={"title": "x"}).status_code == 404
+    assert api.client.delete("/api/chat/sessions/nope").status_code == 404
+    assert api.client.patch("/api/chat/folders/nope", json={"name": "x"}).status_code == 404
+    assert api.client.delete("/api/chat/folders/nope").status_code == 404

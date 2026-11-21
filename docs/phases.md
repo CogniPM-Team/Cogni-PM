@@ -482,6 +482,28 @@ approvals queue, the activity log and the console. What was built:
   parent is fixed by the run; Auto-Pilot is disabled until Phase 8; accessibility was designed in (labels, roles,
   focus, reduced motion) but not audited with a screen reader.
 
+**Chat sessions (added 21 Nov, branch `feature/chat-sessions`).** The Co-Pilot's conversations are kept and
+organised like a chat app's: a **Chats** list in the sidebar with **+ New chat**, reopening any earlier chat at its
+own address (`/console/<id>`) with its full history (and "Read Jira N times"), **rename**, **delete**, and
+**folders** (create, rename, delete, move a chat in or out from its menu). Decisions:
+- Scope is Co-Pilot chats only. Task runs already have their history in Approvals and the Activity log.
+- A chat is created when the first answer comes back (so a failed first question leaves nothing behind) and is
+  titled from that first question; renaming does not reorder the list, and the list is ordered by last use.
+- Deleting a chat deletes its messages for good (also the way a user gets their own words out of the system, H4);
+  the Activity log keeps only content-free rows ("Answered a question", "Deleted a chat"). Deleting a folder keeps
+  its chats and moves them out of it.
+- The mode is part of the address (`/console?mode=M2`), so "New chat" is always the Co-Pilot.
+- Migrations `0004_chat_organisation.sql` (folders, titles, last-used time, reads per answer) and
+  `0005_backfill_chat_titles.sql` (titles earlier chats from their first question and removes the empty chats a
+  failed first question used to leave behind).
+- API: `GET/PATCH/DELETE /api/chat/sessions[/id]`, `POST/PATCH/DELETE /api/chat/folders[/id]`; `POST /api/chat`
+  now returns the chat's `title`. 232 backend and 52 frontend tests pass.
+- The chat list is a second panel inside the Agent console (not the main sidebar). Drag a chat onto a folder to put it
+  there, or onto the area below the folders to take it out; the menu's "Move to" is the keyboard route.
+- The shell is exactly the window tall: sidebar, top bar and footer stay put, pages scroll inside, and the console's
+  chat list and conversation stretch to full height with the message box pinned at the bottom.
+- Not done: search across chats and nested folders.
+
 **Done when (MVP complete):** a PM can paste requirements in the console, review and approve the drafted stories
 in Approvals, break one down into tasks, see the created issues in Jira, and trace every step in the Activity
 log, with a recorded end-to-end demo. This is the paper's "end of November" MVP: LLM integration, approval

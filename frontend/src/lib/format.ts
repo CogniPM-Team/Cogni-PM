@@ -70,6 +70,9 @@ export function describeDetail(action: string, detail: string | null): DetailPar
   if (action === 'chat_turn' && (m = /^session ([\w-]+); (\d+) read\(s\)$/.exec(detail))) {
     return ['Session ', { pill: m[1].slice(0, 8), title: m[1] }, ` · ${plural(Number(m[2]), 'read')} of Jira`]
   }
+  if (action === 'delete_chat' && (m = /^session ([\w-]+)$/.exec(detail))) {
+    return ['Chat ', { pill: m[1].slice(0, 8), title: m[1] }, ' and its messages were deleted']
+  }
   if (action === 'create_issue' && (m = /^(\w+) draft [\w-]+ -> (\S+)$/.exec(detail))) {
     return ['Created ', { pill: m[2] }, ` from a ${DRAFT_KINDS[m[1]] ?? m[1]} draft`]
   }
@@ -96,6 +99,7 @@ const ACTIONS: Record<string, string> = {
   create_issue: 'Created a Jira issue',
   commit_changes: 'Committed changes',
   chat_turn: 'Answered a question',
+  delete_chat: 'Deleted a chat',
   provenance_comment: 'Added a comment in Jira',
 }
 

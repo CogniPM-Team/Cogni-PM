@@ -57,13 +57,98 @@ export interface paths {
         put?: never;
         /**
          * Chat
-         * @description One Co-Pilot turn. Leave `session_id` out to start a conversation; pass the returned one to continue it.
+         * @description One Co-Pilot turn. Leave `session_id` out to start a conversation (it is created, and titled from this
+         *     question, once the answer is ready); pass the returned one to continue it.
          */
         post: operations["chat_api_chat_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/chat/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Folder */
+        post: operations["create_folder_api_chat_folders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/folders/{folder_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Folder
+         * @description Delete a folder. Its chats are kept and move out of the folder.
+         */
+        delete: operations["delete_folder_api_chat_folders__folder_id__delete"];
+        options?: never;
+        head?: never;
+        /** Rename Folder */
+        patch: operations["rename_folder_api_chat_folders__folder_id__patch"];
+        trace?: never;
+    };
+    "/api/chat/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Sessions
+         * @description Every chat, most recently used first, and every folder.
+         */
+        get: operations["list_sessions_api_chat_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Open Session */
+        get: operations["open_session_api_chat_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Session
+         * @description Delete a chat and every message in it. This cannot be undone.
+         */
+        delete: operations["delete_session_api_chat_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Session
+         * @description Rename a chat, or move it into a folder (`folder_id` null takes it out of its folder). Only what is sent
+         *     changes; renaming does not move a chat up the list.
+         */
+        patch: operations["update_session_api_chat_sessions__session_id__patch"];
         trace?: never;
     };
     "/api/health": {
@@ -362,14 +447,82 @@ export interface components {
             /** Session Id */
             session_id?: string | null;
         };
+        /** ChatFolderOut */
+        ChatFolderOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** ChatMessageOut */
+        ChatMessageOut: {
+            /** Content */
+            content: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /**
+             * Reads
+             * @description How many times the agent read Jira to answer; null for your own messages
+             */
+            reads: number | null;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "agent";
+        };
         /** ChatResult */
         ChatResult: {
             /** Answer */
             answer: string;
             /** Session Id */
             session_id: string;
+            /**
+             * Title
+             * @description The chat's name, taken from the first question until it is renamed
+             */
+            title: string;
             /** Tool Calls */
             tool_calls: string[];
+        };
+        /** ChatSessionDetail */
+        ChatSessionDetail: {
+            /** Messages */
+            messages: components["schemas"]["ChatMessageOut"][];
+            session: components["schemas"]["ChatSessionOut"];
+        };
+        /** ChatSessionList */
+        ChatSessionList: {
+            /** Folders */
+            folders: components["schemas"]["ChatFolderOut"][];
+            /** Sessions */
+            sessions: components["schemas"]["ChatSessionOut"][];
+        };
+        /** ChatSessionOut */
+        ChatSessionOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Folder Id */
+            folder_id: string | null;
+            /** Id */
+            id: string;
+            /** Message Count */
+            message_count: number;
+            /** Title */
+            title: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** CreatedIssue */
         CreatedIssue: {
@@ -430,6 +583,11 @@ export interface components {
             sources: components["schemas"]["SourceSpan"][];
             /** Status */
             status: string;
+        };
+        /** FolderBody */
+        FolderBody: {
+            /** Name */
+            name: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -585,6 +743,16 @@ export interface components {
             status: string;
             /** Task Type */
             task_type: string;
+        };
+        /**
+         * SessionPatch
+         * @description Only the fields sent are changed. `folder_id: null` takes a chat out of its folder.
+         */
+        SessionPatch: {
+            /** Folder Id */
+            folder_id?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /** SourceSpan */
         SourceSpan: {
@@ -769,6 +937,218 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChatResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_folder_api_chat_folders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatFolderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_folder_api_chat_folders__folder_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rename_folder_api_chat_folders__folder_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatFolderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sessions_api_chat_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSessionList"];
+                };
+            };
+        };
+    };
+    open_session_api_chat_sessions__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSessionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_session_api_chat_sessions__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_session_api_chat_sessions__session_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSessionOut"];
                 };
             };
             /** @description Validation Error */

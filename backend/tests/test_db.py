@@ -82,3 +82,25 @@ def test_audit_log_rejects_delete_and_truncate(conn):
     conn.rollback()
 
     assert conn.execute("SELECT COUNT(*) AS n FROM audit_log").fetchone() == {"n": 1}
+
+
+def test_old_chats_get_a_title_from_their_first_question_and_empty_ones_are_removed(conn):
+    from cognipm.db.migrate import MIGRATIONS_DIR
+
+    conn.execute("INSERT INTO chat_sessions (id) VALUES ('old'), ('long'), ('empty')")
+    conn.execute(
+        "INSERT INTO chat_messages (session_id, role, content, created_at) VALUES "
+        "('old', 'user', '  How many   stories? ', '2026-11-01T10:00:00Z'), ('old', 'agent', 'Twelve.', '2026-11-01T10:00:05Z'), "
+        "('long', 'user', %s, '2026-11-02T10:00:00Z')",
+        ("Which stories are still open and not started? " * 3,),
+    )
+    conn.commit()
+
+    conn.execute((MIGRATIONS_DIR / "0005_backfill_chat_titles.sql").read_text(encoding="utf-8"))
+    conn.commit()
+
+    rows = {r["id"]: r for r in conn.execute("SELECT id, title, updated_at FROM chat_sessions").fetchall()}
+    assert set(rows) == {"old", "long"}  # the empty chat is gone
+    assert rows["old"]["title"] == "How many stories?"
+    assert rows["old"]["updated_at"].isoformat().startswith("2026-11-01T10:00:05")  # when it was last used
+    assert len(rows["long"]["title"]) == 60 and rows["long"]["title"].endswith("…")

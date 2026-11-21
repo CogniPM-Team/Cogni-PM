@@ -4,9 +4,9 @@ TypeScript types are generated from that schema, so a field renamed here is a co
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 from cognipm.gateway.jira import MAX_SUMMARY_LENGTH
 
@@ -172,8 +172,54 @@ class RerunResult(BaseModel):
 
 class ChatResult(BaseModel):
     session_id: str
+    title: str = Field(description="The chat's name, taken from the first question until it is renamed")
     answer: str
     tool_calls: list[str]
+
+
+class ChatFolderOut(BaseModel):
+    id: str
+    name: str
+
+
+class ChatSessionOut(BaseModel):
+    id: str
+    title: str | None
+    folder_id: str | None
+    created_at: datetime
+    updated_at: datetime
+    message_count: int
+
+
+class ChatMessageOut(BaseModel):
+    id: int
+    role: Literal["user", "agent"]
+    content: str
+    reads: int | None = Field(
+        description="How many times the agent read Jira to answer; null for your own messages"
+    )
+    created_at: datetime
+
+
+class ChatSessionDetail(BaseModel):
+    session: ChatSessionOut
+    messages: list[ChatMessageOut]
+
+
+class ChatSessionList(BaseModel):
+    folders: list[ChatFolderOut]
+    sessions: list[ChatSessionOut]
+
+
+class FolderBody(BaseModel):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
+
+
+class SessionPatch(BaseModel):
+    """Only the fields sent are changed. `folder_id: null` takes a chat out of its folder."""
+
+    title: str | None = Field(default=None, max_length=120)
+    folder_id: str | None = None
 
 
 class AuditRow(BaseModel):

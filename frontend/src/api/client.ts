@@ -35,7 +35,7 @@ function describe(detail: unknown, status: number): { message: string; problem?:
   return { message: `Request failed (${status})` }
 }
 
-async function request<T>(method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown): Promise<T> {
+async function request<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<T> {
   const response = await fetch(apiUrl(path), {
     method,
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
@@ -51,6 +51,7 @@ async function request<T>(method: 'GET' | 'POST' | 'PATCH', path: string, body?:
     const { message, problem } = describe(payload?.detail, response.status)
     throw new ApiError(response.status, message, problem)
   }
+  if (response.status === 204) return undefined as T // nothing to read: the delete worked
   return (await response.json()) as T
 }
 
@@ -58,4 +59,5 @@ export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
   patch: <T>(path: string, body: unknown) => request<T>('PATCH', path, body),
+  delete: (path: string) => request<void>('DELETE', path),
 }

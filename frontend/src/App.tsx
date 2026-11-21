@@ -11,7 +11,7 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Navigate to="/console" replace />} />
-        <Route path="console" element={<AgentConsole />} />
+        <Route path="console/:chatId?" element={<AgentConsole />} />
         <Route path="approvals" element={<Approvals />} />
         <Route path="approvals/:id" element={<RunReview />} />
         <Route path="activity" element={<Activity />} />

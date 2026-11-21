@@ -41,7 +41,7 @@ describe('Agent console', () => {
     await user.click(screen.getByRole('button', { name: 'Ask' }))
 
     await waitFor(() => expect(calls.filter((c) => c.method === 'POST')).toHaveLength(2))
-    expect(calls[1].body).toEqual({ message: 'And open ones?', session_id: 's1' })
+    expect(calls.filter((c) => c.method === 'POST')[1].body).toEqual({ message: 'And open ones?', session_id: 's1' })
   })
 
   it('shows the answer with its formatting, and a spinner while the Co-Pilot is working', async () => {

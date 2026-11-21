@@ -305,6 +305,70 @@
         "title": "ChatBody",
         "type": "object"
       },
+      "ChatFolderOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ChatFolderOut",
+        "type": "object"
+      },
+      "ChatMessageOut": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "reads": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many times the agent read Jira to answer; null for your own messages",
+            "title": "Reads"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "agent"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "reads",
+          "created_at"
+        ],
+        "title": "ChatMessageOut",
+        "type": "object"
+      },
       "ChatResult": {
         "properties": {
           "answer": {
@@ -313,6 +377,11 @@
           },
           "session_id": {
             "title": "Session Id",
+            "type": "string"
+          },
+          "title": {
+            "description": "The chat's name, taken from the first question until it is renamed",
+            "title": "Title",
             "type": "string"
           },
           "tool_calls": {
@@ -325,10 +394,109 @@
         },
         "required": [
           "session_id",
+          "title",
           "answer",
           "tool_calls"
         ],
         "title": "ChatResult",
+        "type": "object"
+      },
+      "ChatSessionDetail": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageOut"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "session": {
+            "$ref": "#/components/schemas/ChatSessionOut"
+          }
+        },
+        "required": [
+          "session",
+          "messages"
+        ],
+        "title": "ChatSessionDetail",
+        "type": "object"
+      },
+      "ChatSessionList": {
+        "properties": {
+          "folders": {
+            "items": {
+              "$ref": "#/components/schemas/ChatFolderOut"
+            },
+            "title": "Folders",
+            "type": "array"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/ChatSessionOut"
+            },
+            "title": "Sessions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "folders",
+          "sessions"
+        ],
+        "title": "ChatSessionList",
+        "type": "object"
+      },
+      "ChatSessionOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "message_count": {
+            "title": "Message Count",
+            "type": "integer"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "folder_id",
+          "created_at",
+          "updated_at",
+          "message_count"
+        ],
+        "title": "ChatSessionOut",
         "type": "object"
       },
       "CreatedIssue": {
@@ -480,6 +648,21 @@
           "error"
         ],
         "title": "DraftOut",
+        "type": "object"
+      },
+      "FolderBody": {
+        "properties": {
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "FolderBody",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -925,6 +1108,36 @@
         "title": "RunSummary",
         "type": "object"
       },
+      "SessionPatch": {
+        "description": "Only the fields sent are changed. `folder_id: null` takes a chat out of its folder.",
+        "properties": {
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "SessionPatch",
+        "type": "object"
+      },
       "SourceSpan": {
         "properties": {
           "end": {
@@ -1290,7 +1503,7 @@
     },
     "/api/chat": {
       "post": {
-        "description": "One Co-Pilot turn. Leave `session_id` out to start a conversation; pass the returned one to continue it.",
+        "description": "One Co-Pilot turn. Leave `session_id` out to start a conversation (it is created, and titled from this\nquestion, once the answer is ready); pass the returned one to continue it.",
         "operationId": "chat_api_chat_post",
         "requestBody": {
           "content": {
@@ -1325,6 +1538,282 @@
           }
         },
         "summary": "Chat",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/chat/folders": {
+      "post": {
+        "operationId": "create_folder_api_chat_folders_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatFolderOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Folder",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/chat/folders/{folder_id}": {
+      "delete": {
+        "description": "Delete a folder. Its chats are kept and move out of the folder.",
+        "operationId": "delete_folder_api_chat_folders__folder_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folder_id",
+            "required": true,
+            "schema": {
+              "title": "Folder Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Folder",
+        "tags": [
+          "chat"
+        ]
+      },
+      "patch": {
+        "operationId": "rename_folder_api_chat_folders__folder_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folder_id",
+            "required": true,
+            "schema": {
+              "title": "Folder Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatFolderOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename Folder",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/chat/sessions": {
+      "get": {
+        "description": "Every chat, most recently used first, and every folder.",
+        "operationId": "list_sessions_api_chat_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSessionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Sessions",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/chat/sessions/{session_id}": {
+      "delete": {
+        "description": "Delete a chat and every message in it. This cannot be undone.",
+        "operationId": "delete_session_api_chat_sessions__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Session",
+        "tags": [
+          "chat"
+        ]
+      },
+      "get": {
+        "operationId": "open_session_api_chat_sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSessionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Open Session",
+        "tags": [
+          "chat"
+        ]
+      },
+      "patch": {
+        "description": "Rename a chat, or move it into a folder (`folder_id` null takes it out of its folder). Only what is sent\nchanges; renaming does not move a chat up the list.",
+        "operationId": "update_session_api_chat_sessions__session_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Session",
         "tags": [
           "chat"
         ]
