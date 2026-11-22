@@ -1,0 +1,28 @@
+# Nothing here goes into the image. Above all: never the .env file (it holds the Jira token and the Gemini key).
+.env
+.env.*
+!.env.example
+
+.git
+.github
+.claude
+.vscode
+.idea
+
+# Built or installed elsewhere
+**/node_modules
+**/dist
+**/.venv
+**/venv
+**/__pycache__
+**/*.pyc
+**/*.egg-info
+**/.pytest_cache
+**/.ruff_cache
+frontend/coverage
+
+# Not needed to run the app
+docs
+*.md
+!backend/README.md
+backend/tests

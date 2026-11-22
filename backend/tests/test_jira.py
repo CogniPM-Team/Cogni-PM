@@ -11,47 +11,13 @@ import httpx
 import pytest
 
 from cognipm.gateway.jira import (
-    JiraClient,
     JiraConfig,
     JiraConfigError,
     _adf_to_text,
     _normalize_list,
     text_to_adf,
 )
-
-CONFIG = JiraConfig(
-    base_url="https://example.atlassian.net",
-    email="tester@example.com",
-    api_token="secret-token",
-    project_key="TEST",
-    story_points_field="customfield_10016",
-)
-
-
-def make_client(handler) -> tuple[JiraClient, list[httpx.Request]]:
-    """A JiraClient whose HTTP layer is `handler(request) -> httpx.Response`;
-    also returns every request it received."""
-    seen: list[httpx.Request] = []
-
-    def record(request: httpx.Request) -> httpx.Response:
-        seen.append(request)
-        return handler(request)
-
-    return JiraClient(CONFIG, transport=httpx.MockTransport(record)), seen
-
-
-def raw_issue(key="TEST-1", *, points=3.0, status_category="new", **extra) -> dict:
-    fields = {
-        "summary": f"Summary of {key}",
-        "status": {"name": "To Do", "statusCategory": {"key": status_category}},
-        "issuetype": {"name": "Story"},
-        "customfield_10016": points,
-        "duedate": "2026-12-01",
-        "labels": ["backend"],
-    }
-    fields.update(extra)
-    return {"key": key, "fields": fields}
-
+from tests.helpers import make_client, raw_issue
 
 # ---------- configuration ----------
 
@@ -202,3 +168,37 @@ def test_adf_round_trip_and_blank_lines():
     assert [len(p["content"]) for p in adf["content"]] == [1, 0, 1]  # a blank line is an empty paragraph
     assert _adf_to_text(adf) == "one\n\nthree\n"
     assert _adf_to_text(None) == "" and _adf_to_text("plain") == "plain"
+
+
+def test_an_unset_story_points_field_is_left_out_of_requests_instead_of_sent_as_a_blank_field_name():
+    import dataclasses
+    import json
+
+    import httpx
+
+    from cognipm.gateway.jira import JiraClient
+    from tests.helpers import CONFIG
+
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if request.method == "POST":
+            return httpx.Response(200, json={"issues": []})
+        return httpx.Response(
+            200,
+            json={
+                "key": "TEST-1",
+                "fields": {"summary": "s", "status": {"name": "To Do"}, "issuetype": {"name": "Story"}},
+            },
+        )
+
+    client = JiraClient(
+        dataclasses.replace(CONFIG, story_points_field=""), transport=httpx.MockTransport(handler)
+    )
+
+    client.search_issues("project = TEST")
+    client.get_issue("TEST-1")
+
+    assert "" not in json.loads(seen[0].content)["fields"]
+    assert "" not in seen[1].url.params["fields"].split(",")
