@@ -4,6 +4,8 @@ import { api } from '../api/client'
 import type { DocumentSummary, SavedDocument } from '../api/types'
 import { useFetch } from '../api/useFetch'
 import { ago, formatTime, plural } from '../lib/format'
+import FileButton from './FileButton'
+import Icon from './Icon'
 import { EmptyState, ErrorState } from './PageParts'
 
 const MAX_TEXT = 200_000 // the API's limit
@@ -82,10 +84,7 @@ function AddForm({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => v
         <span>Text</span>
         <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste the text, or load a file below." />
       </label>
-      <label className="field">
-        <span>Or load a text file (.txt or .md)</span>
-        <input type="file" accept=".txt,.md,text/plain,text/markdown" onChange={(e) => void load(e.target.files?.[0])} />
-      </label>
+      <FileButton label="Load a text file" fileName={filename} onFile={(file) => void load(file)} />
       <p className="meta">Saved text stays on this install. It is sent to the AI model only when you draft from it.</p>
       {problem && (
         <p className="error" role="alert">
@@ -161,8 +160,9 @@ function Row({ doc, reload }: { doc: DocumentSummary; reload: () => void }) {
         </td>
         <td>{doc.used_in_runs === 0 ? 'Not used yet' : `Used in ${plural(doc.used_in_runs, 'run')}`}</td>
         <td className="doc-actions">
-          <Link className="button-link small" to={`/console?mode=M2&document=${doc.id}`}>
+          <Link className="button-link small primary with-icon" to={`/console?mode=M2&document=${doc.id}`}>
             Draft a backlog from this
+            <Icon name="arrow" size={14} />
           </Link>
           <button type="button" className="link" aria-expanded={open} onClick={() => setOpen(!open)}>
             {open ? 'Hide' : 'Open'}
@@ -170,7 +170,7 @@ function Row({ doc, reload }: { doc: DocumentSummary; reload: () => void }) {
           <button type="button" className="link" onClick={() => setRenaming(true)}>
             Rename
           </button>
-          <button type="button" className="link" onClick={() => setConfirming(true)}>
+          <button type="button" className="link danger" onClick={() => setConfirming(true)}>
             Delete
           </button>
         </td>

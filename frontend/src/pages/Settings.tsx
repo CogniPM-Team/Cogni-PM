@@ -143,6 +143,7 @@ export default function Settings() {
     <>
       <PageHeader description="How this CogniPM is set up, and what the AI is allowed to do. To change a connection, edit the .env file and restart." />
 
+      <div className="settings-grid">
       <section className="card settings-section" aria-labelledby="set-connections">
         <h2 id="set-connections">Connections</h2>
         <Connection
@@ -158,7 +159,7 @@ export default function Settings() {
         />
       </section>
 
-      <section className="card settings-section" aria-labelledby="set-modes">
+      <section className="card settings-section settings-modes" aria-labelledby="set-modes">
         <h2 id="set-modes">What each mode can do</h2>
         <p className="meta">This list comes from the tools the system actually gives each mode, so it cannot drift from what is enforced.</p>
         {modes.loading && <p className="muted">Loading...</p>}
@@ -233,6 +234,7 @@ export default function Settings() {
           </a>
         </p>
       </section>
+      </div>
     </>
   )
 }

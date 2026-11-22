@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { runSummary } from '../test/fixtures'
 import { mockApi } from '../test/mockApi'
@@ -19,6 +20,7 @@ function renderAt(path: string) {
 }
 
 describe('Layout', () => {
+  beforeEach(() => localStorage.clear())
   afterEach(() => vi.unstubAllGlobals())
 
   it('builds the sidebar from the nav config: sections and enabled pages only', async () => {
@@ -79,5 +81,96 @@ describe('Layout', () => {
     expect(current).toHaveClass('active')
     expect(screen.getByRole('heading', { level: 1, name: 'Approvals' })).toBeInTheDocument()
     expect(screen.getByText(/Jira · not connected/)).toBeInTheDocument()
+  })
+  const quiet = () =>
+    mockApi({ 'GET /api/runs': { waiting: [], past: [], awaiting_review_count: 0 }, 'GET /api/project': PROJECT })
+
+  it('draws an icon beside every page, hidden from screen readers so the label is read once', async () => {
+    quiet()
+
+    renderAt('/home')
+
+    const links = [...within(await screen.findByRole('navigation', { name: 'Main' })).getAllByRole('link')]
+    links.push(...within(screen.getByRole('navigation', { name: 'System' })).getAllByRole('link'))
+    expect(links).toHaveLength(6)
+    for (const link of links) expect(link.querySelector('svg[aria-hidden="true"]')).not.toBeNull()
+  })
+
+  it('collapses to icons only and expands again, keeping every page reachable by its name', async () => {
+    quiet()
+    const user = userEvent.setup()
+    const { container } = renderAt('/home')
+    const toggle = await screen.findByRole('button', { name: 'Collapse' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.app')).not.toHaveClass('collapsed')
+
+    await user.click(toggle)
+
+    expect(container.querySelector('.app')).toHaveClass('collapsed')
+    const expand = screen.getByRole('button', { name: 'Expand the sidebar' })
+    expect(expand).toHaveAttribute('aria-expanded', 'false')
+    // the labels are still there for assistive technology, and a tooltip names each page for everyone else
+    expect(screen.getByRole('link', { name: 'Approvals' })).toHaveAttribute('title', 'Approvals')
+    expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
+
+    await user.click(expand)
+
+    expect(container.querySelector('.app')).not.toHaveClass('collapsed')
+    expect(screen.getByRole('link', { name: 'Approvals' })).not.toHaveAttribute('title')
+  })
+
+  it('remembers the choice for next time, and starts collapsed when it was left that way', async () => {
+    quiet()
+    const user = userEvent.setup()
+    const first = renderAt('/home')
+    await user.click(await screen.findByRole('button', { name: 'Collapse' }))
+    expect(localStorage.getItem('cognipm.sidebar.collapsed')).toBe('1')
+    first.unmount()
+
+    const second = renderAt('/home')
+
+    expect(await screen.findByRole('button', { name: 'Expand the sidebar' })).toBeInTheDocument()
+    expect(second.container.querySelector('.app')).toHaveClass('collapsed')
+  })
+
+  it('still works when the browser will not store the choice', async () => {
+    quiet()
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    const user = userEvent.setup()
+    const { container } = renderAt('/home')
+
+    await user.click(await screen.findByRole('button', { name: 'Collapse' }))
+
+    expect(container.querySelector('.app')).toHaveClass('collapsed')
+    vi.restoreAllMocks()
+  })
+
+  it('keeps the waiting count on Approvals when collapsed', async () => {
+    mockApi({
+      'GET /api/runs': { waiting: [runSummary('r1')], past: [], awaiting_review_count: 2 },
+      'GET /api/project': PROJECT,
+    })
+    const user = userEvent.setup()
+    renderAt('/home')
+
+    await user.click(await screen.findByRole('button', { name: 'Collapse' }))
+
+    expect(await screen.findByLabelText('2 waiting for you')).toBeInTheDocument()
+  })
+
+  it('links the breadcrumb back to the parent page when you are inside a run', async () => {
+    quiet()
+
+    renderAt('/approvals/run-1')
+
+    const crumb = (await screen.findByText(/MCP/, { selector: '.crumb' })) as HTMLElement
+    expect(within(crumb).getByRole('link', { name: 'Approvals' })).toHaveAttribute('href', '/approvals')
+    expect(crumb).toHaveTextContent('MCP › Approvals › Review')
+    expect(screen.getByRole('heading', { level: 1, name: 'Review a run' })).toBeInTheDocument()
   })
 })

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { apiUrl } from '../api/client'
 import type { AuditFilter, AuditPage, AuditRow } from '../api/types'
 import { useFetch } from '../api/useFetch'
+import Icon from '../components/Icon'
 import { EmptyState, ErrorState, PageHeader, Tabs } from '../components/PageParts'
 import { auditParams } from '../lib/audit'
 import { actionLabel, actorLabel, ago, describeDetail, formatTime, MODE_NAMES } from '../lib/format'
@@ -23,7 +24,12 @@ function Row({ row, open, onToggle }: { row: AuditRow; open: boolean; onToggle: 
   const hasMore = Boolean(row.detail || row.before || row.after)
   return (
     <>
-      <tr>
+      <tr
+        className={hasMore ? 'row-click' : undefined}
+        onClick={(event) => {
+          if (hasMore && !(event.target as HTMLElement).closest('a, button')) onToggle()
+        }}
+      >
         <td>
           <time dateTime={row.ts} title={ago(row.ts)}>
             {formatTime(row.ts)}
@@ -32,7 +38,13 @@ function Row({ row, open, onToggle }: { row: AuditRow; open: boolean; onToggle: 
         <td>{actorLabel(row.actor)}</td>
         <td>{actionLabel(row.action)}</td>
         <td>{row.mode ? (MODE_NAMES[row.mode] ?? row.mode) : ''}</td>
-        <td>{row.run_id && <Link to={`/approvals/${row.run_id}`}>{row.run_id.slice(0, 8)}</Link>}</td>
+        <td>
+          {row.run_id && (
+            <Link className="chip" to={`/approvals/${row.run_id}`}>
+              {row.run_id.slice(0, 8)}
+            </Link>
+          )}
+        </td>
         <td className={`outcome-${row.outcome}`}>{row.outcome}</td>
         <td>
           {hasMore && (
@@ -134,17 +146,15 @@ export default function Activity() {
                 Clear
               </button>
             )}
+            <label>
+              <input type="checkbox" checked={grouped} onChange={(e) => setGrouped(e.target.checked)} /> Group by run
+            </label>
           </div>
-          <a className="button-link small" href={apiUrl(`/api/audit/export.csv?${auditParams(query)}`)} download>
+          <a className="button-link small with-icon" href={apiUrl(`/api/audit/export.csv?${auditParams(query)}`)} download>
             Export everything
+            <Icon name="download" size={14} />
           </a>
         </div>
-        <div className="toolbar">
-          <label>
-            <input type="checkbox" checked={grouped} onChange={(e) => setGrouped(e.target.checked)} /> Group by run
-          </label>
-        </div>
-
         {loading && <p className="muted">Loading...</p>}
         {error && <ErrorState title="Could not load the activity log" message={error.message} onRetry={reload} />}
         {data && rows.length === 0 && (
@@ -175,7 +185,10 @@ export default function Activity() {
                           <th colSpan={COLUMNS} style={{ textTransform: 'none', letterSpacing: 0 }}>
                             {runId ? (
                               <>
-                                Run <Link to={`/approvals/${runId}`}>{runId.slice(0, 8)}</Link>
+                                Run{' '}
+                                <Link className="chip" to={`/approvals/${runId}`}>
+                                  {runId.slice(0, 8)}
+                                </Link>
                               </>
                             ) : (
                               'Not part of a run'

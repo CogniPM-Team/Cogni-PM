@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { AuditRow } from '../api/types'
 import { runSummary } from '../test/fixtures'
 import { mockApi } from '../test/mockApi'
@@ -121,6 +121,26 @@ describe('Approvals', () => {
 
     expect(await screen.findByText(/Nothing is waiting/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Agent console' })).toHaveAttribute('href', '/console')
+  })
+
+  it('opens a past run when its row is pressed anywhere, not only on the Open link', async () => {
+    mockApi({
+      'GET /api/runs': { waiting: [], past: [runSummary('r-done', { status: 'applied', scope: 'Sprint notes' })], awaiting_review_count: 0 },
+    })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/approvals']}>
+        <Routes>
+          <Route path="/approvals" element={<Approvals />} />
+          <Route path="/approvals/:id" element={<p>the run page</p>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('tab', { name: 'History' }))
+    await user.click(screen.getByText('Sprint notes')) // the text in the row, not the link
+
+    expect(screen.getByText('the run page')).toBeInTheDocument()
   })
 })
 
@@ -254,5 +274,23 @@ describe('Activity log', () => {
     )
 
     expect(await screen.findByText(/Showing the newest 500/)).toBeInTheDocument()
+  })
+  it('opens and closes an entry when its row is pressed, and gives each run a chip that links to it', async () => {
+    mockApi({ 'GET /api/audit': { filter: 'all', rows: [row(1, { run_id: 'abcdef1234', detail: 'two issues created' })] } })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Activity />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByText('Approved'))
+    expect(screen.getByText('two issues created')).toBeInTheDocument()
+    await user.click(screen.getByText('Approved'))
+    expect(screen.queryByText('two issues created')).not.toBeInTheDocument()
+
+    const chip = screen.getByRole('link', { name: 'abcdef12' })
+    expect(chip).toHaveClass('chip')
+    expect(chip).toHaveAttribute('href', '/approvals/abcdef1234')
   })
 })

@@ -1,40 +1,20 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import type { RunList, RunSummary } from '../api/types'
 import { useFetch } from '../api/useFetch'
+import ArrowLink from '../components/ArrowLink'
 import { EmptyState, ErrorState, PageHeader, Tabs } from '../components/PageParts'
 import { ModePill, StatusPill } from '../components/Pills'
-import { ago, formatTime, plural, STATUS_LABELS, TASK_NAMES, waitingOverADay } from '../lib/format'
+import RunCard from '../components/RunCard'
+import { ago, formatTime, STATUS_LABELS, TASK_NAMES } from '../lib/format'
 import { tabPanelProps } from '../lib/tabs'
 
 type View = 'waiting' | 'history'
 
-function QueueCard({ run }: { run: RunSummary }) {
-  const overdue = run.ready_at !== null && waitingOverADay(run.ready_at)
-  return (
-    <article className={`queue-card mode-${run.mode}`}>
-      <div className="queue-top">
-        <ModePill mode={run.mode} />
-        {overdue && <span className="tag overdue">Waiting over a day</span>}
-      </div>
-      <div className="queue-title">{TASK_NAMES[run.task_type] ?? run.task_type}</div>
-      <div className="meta">{run.scope}</div>
-      <div className="meta">
-        {plural(run.draft_count, 'draft')}
-        {run.ready_at && ` · waiting ${ago(run.ready_at)}`}
-      </div>
-      <div className="row-actions">
-        <Link className="button-link" to={`/approvals/${run.id}`}>
-          Review
-        </Link>
-      </div>
-    </article>
-  )
-}
-
 function History({ runs }: { runs: RunSummary[] }) {
   const [status, setStatus] = useState('all')
   const [search, setSearch] = useState('')
+  const navigate = useNavigate()
 
   // Only offer outcomes that exist, so no choice leads to an empty list.
   const statuses = [...new Set(runs.map((r) => r.status))]
@@ -86,7 +66,14 @@ function History({ runs }: { runs: RunSummary[] }) {
             </thead>
             <tbody>
               {shown.map((run) => (
-                <tr key={run.id}>
+                <tr
+                  key={run.id}
+                  className="row-click"
+                  onClick={(event) => {
+                    // the whole row opens the run, except when the press was on the link itself
+                    if (!(event.target as HTMLElement).closest('a, button')) navigate(`/approvals/${run.id}`)
+                  }}
+                >
                   <td>
                     <time dateTime={run.created_at} title={ago(run.created_at)}>
                       {formatTime(run.created_at)}
@@ -104,7 +91,7 @@ function History({ runs }: { runs: RunSummary[] }) {
                     <StatusPill status={run.status} />
                   </td>
                   <td>
-                    <Link to={`/approvals/${run.id}`}>Open</Link>
+                    <ArrowLink to={`/approvals/${run.id}`}>Open</ArrowLink>
                   </td>
                 </tr>
               ))}
@@ -145,7 +132,7 @@ export default function Approvals() {
           ) : (
             <div className="queue">
               {data.waiting.map((run) => (
-                <QueueCard key={run.id} run={run} />
+                <RunCard key={run.id} run={run} />
               ))}
             </div>
           )

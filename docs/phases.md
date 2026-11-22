@@ -741,6 +741,89 @@ freeze features before FIT4702 starts.
 UI work has its own plan: [ux-plan.md](ux-plan.md) says what pages to add and why, and [ux-phases.md](ux-phases.md)
 breaks it into phases U0 to U10 on the branch `feature/uiux-improvement`.
 
+## Insights: what the numbers mean
+
+**Status: DRAFT. Agreed by the team: ☐  Agreed by the supervisor: ☐.** The Insights page (phase U7) is built from
+these definitions, and nothing is built until they are agreed. A number the study quotes in the paper must mean exactly
+what is written here, so change a definition here first and the code second.
+
+Everything below can be worked out from data the system already stores. Nothing new is recorded.
+
+### Four rules for every number
+
+1. **One group of runs.** Every number is about the runs *started* in the chosen date range (`runs.created_at`),
+   in the chosen task (P1 or P2) and mode (M2 or M3). A Co-Pilot chat is not a run, so chats are not counted anywhere on
+   this page.
+2. **Only decided runs count for rates.** A run is **decided** when the reviewer approved or rejected it (its status is
+   `applied` or `rejected`). A run that is still working, still waiting for review, or failed part-way through creating
+   issues is **open**. Open runs are shown as a count and left out of every rate. (A failed run becomes decided when it
+   is approved again or rejected.)
+3. **Show the counts, not just the percentage.** Every rate is shown as "3 of 12 (25%)". With nothing to divide by,
+   the page says "No decisions yet", never "0%". Below 5 decided runs the page adds "too few to read".
+4. **Each number names its source.** Hovering a number says which stored fields it came from, so a reader can check it.
+
+### The definitions
+
+| Number | Exactly how it is counted |
+|---|---|
+| **Runs decided** | Runs that are `applied` or `rejected`. Shown next to the number of open runs. |
+| **Approval rate** | Approved runs ÷ decided runs. A run counts as approved if the reviewer created **at least one** draft from it, even if they left others out. |
+| **Rejection rate** | Rejected runs ÷ decided runs. This includes runs rejected because the reviewer chose **Regenerate** (try again); those are also counted separately under Reruns. Approval rate and rejection rate add up to 100%. |
+| **What happened to each draft** | Every draft in a decided run ends in exactly one of three states: **created as the agent wrote it**, **created after the reviewer edited it**, or **left out** (not ticked at approval, or part of a rejected run). The three always add up to the number of reviewed drafts. |
+| **Edit rate** | Reviewed drafts the reviewer changed ÷ reviewed drafts. A draft is "changed" if its stored text differs from the agent's original when the decision was made. Changing something and then changing it back counts as **not** changed. A draft that was edited and then left out still counts as changed: the person engaged with it. |
+| **Left-out rate** | Left-out drafts ÷ reviewed drafts. The draft-level partner of the rejection rate. |
+| **Time to decision** | For each decided run: the moment the reviewer approved or rejected it minus the moment its drafts first became reviewable (`decided_at − ready_at`). Shown as the **median** and the **90th percentile** (the value 9 in 10 runs were decided within, by the nearest-rank method), in minutes. This is clock time: it includes any time the reviewer spent away. A run approved after a Jira failure ends at the final successful approval. A run that never became reviewable is left out. |
+| **Reruns** | Runs that replace an earlier one (`rerun_of` is set) ÷ all runs started. Each Regenerate creates exactly one such run. |
+| **Safety-rule refusals** | The number of times a rule refused a draft, counted per rule, for runs in the group (activity-log entries named `guardrail:<rule>` with outcome *refused*). It counts **attempts**: one draft can be refused when it is proposed and again when it is approved, which counts twice. |
+| **AI usage per run** | Tokens the model reported for the run, input plus output: the **average** and the **total** for the group. Runs with no token figure are left out of the average. Tokens, not money, because prices change; rejected and regenerated runs count because they cost the same. |
+| **Approved untouched** *(optional, see questions)* | Approved runs where **every** draft was created and **none** was edited ÷ approved runs. A high figure does not prove rubber-stamping, but read together with a short time to decision it is the clearest sign of it. |
+
+### A worked example (so anyone can check the page by hand)
+
+Five runs are started in the range. A, B, C and D are decided and E is still waiting; E replaced D when the reviewer
+chose Regenerate.
+
+| Run | Outcome | Drafts | Created as written | Created after edit | Left out | Edited drafts | Minutes to decide | Tokens |
+|---|---|---|---|---|---|---|---|---|
+| A | approved | 3 | 2 | 1 | 0 | 1 | 4 | 900 |
+| B | approved | 2 | 2 | 0 | 0 | 0 | 10 | 700 |
+| C | rejected | 4 | 0 | 0 | 4 | 1 | 2 | 1,100 |
+| D | rejected (Regenerate) | 3 | 0 | 0 | 3 | 0 | 6 | 800 |
+| E | open | 2 | | | | | | 500 |
+
+| Number | Answer |
+|---|---|
+| Runs decided | 4 (and 1 open) |
+| Approval rate | 2 of 4 (50%) |
+| Rejection rate | 2 of 4 (50%) |
+| Reviewed drafts | 3 + 2 + 4 + 3 = 12 |
+| Created as written / after edit / left out | 4 / 1 / 7 (adds up to 12) |
+| Edit rate | 2 of 12 (17%): one in A, one in C |
+| Left-out rate | 7 of 12 (58%) |
+| Time to decision | sorted 2, 4, 6, 10: median (4 + 6) ÷ 2 = **5 min**; 90th percentile = the 4th value = **10 min** |
+| Reruns | 1 of 5 runs (20%): E |
+| AI usage per run | total 4,000 tokens, average 800 (all five runs count) |
+| Approved untouched | 1 of 2 (50%): B |
+
+### What these numbers do not tell you
+
+- **Whether a draft was good.** There is no answer key. Edit rate and left-out rate are signs of quality, not proof.
+- **Who decided.** There is one implicit reviewer until login exists (Phase 7), so there are no per-person numbers.
+- **How long someone actually read.** Time to decision is clock time. There is no idle detection.
+- **What happened in Jira afterwards.** That is the Library's job, not Insights.
+
+### Questions for the team and supervisor
+
+1. Does a **partly approved** run count as approved? This draft says yes (one created draft is enough). The other
+   choice is to count only runs where everything was created, which makes the approval rate look lower.
+2. Should a **Regenerate** count as a rejection? This draft says yes and also reports it under Reruns, so nothing is
+   hidden. If the team would rather treat it as "not a decision", say so and decided-run counts change.
+3. Keep the optional **approved untouched** figure? It is the nearest thing we have to a rubber-stamp indicator
+   (review fatigue is H6).
+4. Should the group be runs **started** in the range (as here) or runs **decided** in the range? Started keeps every
+   number about the same runs; decided matches "what happened last week" better but mixes in older runs.
+5. Do **participants** see their own numbers? Seeing their own edit rate may change how they behave in the study.
+
 ## Hardening and gaps
 
 What a real practitioner would hit that the phases above do not yet cover, from a review on 16 Nov. Each item

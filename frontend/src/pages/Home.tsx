@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { AuditPage, ChatSessionList, Project, RunList, RunSummary } from '../api/types'
+import type { AuditPage, ChatSessionList, Project, RunList } from '../api/types'
 import { useFetch } from '../api/useFetch'
+import ArrowLink from '../components/ArrowLink'
+import Icon from '../components/Icon'
 import { EmptyState, ErrorState, PageHeader } from '../components/PageParts'
-import { ModePill } from '../components/Pills'
-import { actionLabel, actorLabel, ago, formatTime, plural, TASK_NAMES } from '../lib/format'
+import RunCard from '../components/RunCard'
+import { actionLabel, actorLabel, ago, formatTime } from '../lib/format'
 
 const HIDE_KEY = 'cognipm.home.checklist.hidden'
 
@@ -14,28 +16,6 @@ function readHidden(): boolean {
   } catch {
     return false // storage can be blocked; the checklist then just stays visible
   }
-}
-
-function RunRow({ run, retry }: { run: RunSummary; retry: boolean }) {
-  return (
-    <li className={`home-row mode-${run.mode}`}>
-      <div>
-        <div className="home-row-top">
-          <ModePill mode={run.mode} />
-          <strong>{TASK_NAMES[run.task_type] ?? run.task_type}</strong>
-        </div>
-        <div className="meta">{run.scope}</div>
-        <div className="meta">
-          {plural(run.draft_count, 'draft')}
-          {run.ready_at && ` · waiting ${ago(run.ready_at)}`}
-          {retry && ' · did not finish creating everything'}
-        </div>
-      </div>
-      <Link className="button-link" to={`/approvals/${run.id}`}>
-        {retry ? 'Open to retry' : 'Review'}
-      </Link>
-    </li>
-  )
 }
 
 function NeedsYou() {
@@ -53,14 +33,14 @@ function NeedsYou() {
           return runs.data.waiting.length + retry.length === 0 ? (
             <EmptyState>Nothing is waiting.</EmptyState>
           ) : (
-            <ul className="home-list">
+            <div className="queue">
               {runs.data.waiting.map((run) => (
-                <RunRow key={run.id} run={run} retry={false} />
+                <RunCard key={run.id} run={run} />
               ))}
               {retry.map((run) => (
-                <RunRow key={run.id} run={run} retry />
+                <RunCard key={run.id} run={run} retry />
               ))}
-            </ul>
+            </div>
           )
         })()}
     </section>
@@ -73,16 +53,34 @@ function StartSomething() {
       <h2 id="home-start">Start something</h2>
       <div className="home-start">
         <Link to="/console?mode=M2">
-          <strong>Draft a backlog</strong>
-          <small>Turn notes or requirements into stories</small>
+          <span className="task-badge" aria-hidden="true">
+            <Icon name="list" size={18} />
+          </span>
+          <span>
+            <strong>Draft a backlog</strong>
+            <small>Turn notes or requirements into stories</small>
+          </span>
+          <Icon name="arrow" size={16} />
         </Link>
         <Link to="/console?mode=M2&task=p2">
-          <strong>Break down a story</strong>
-          <small>Split a story into sub-tasks</small>
+          <span className="task-badge" aria-hidden="true">
+            <Icon name="branch" size={18} />
+          </span>
+          <span>
+            <strong>Break down a story</strong>
+            <small>Split a story into sub-tasks</small>
+          </span>
+          <Icon name="arrow" size={16} />
         </Link>
         <Link to="/console">
-          <strong>Ask the Co-Pilot</strong>
-          <small>Ask a question about the project</small>
+          <span className="task-badge" aria-hidden="true">
+            <Icon name="console" size={18} />
+          </span>
+          <span>
+            <strong>Ask the Co-Pilot</strong>
+            <small>Ask a question about the project</small>
+          </span>
+          <Icon name="arrow" size={16} />
         </Link>
       </div>
     </section>
@@ -104,21 +102,28 @@ function Recently() {
           <>
             <ul className="home-list">
               {audit.data.rows.map((row) => (
-                <li key={row.id} className="home-row">
+                <li key={row.id} className={`home-row${row.run_id ? ' clickable' : ''}`}>
                   <div>
                     <div>
-                      {row.run_id ? <Link to={`/approvals/${row.run_id}`}>{actionLabel(row.action)}</Link> : actionLabel(row.action)}
+                      {row.run_id ? (
+                        <Link className="stretch" to={`/approvals/${row.run_id}`}>
+                          {actionLabel(row.action)}
+                        </Link>
+                      ) : (
+                        actionLabel(row.action)
+                      )}
                     </div>
                     <div className="meta">{actorLabel(row.actor)}</div>
                   </div>
-                  <time className="meta" dateTime={row.ts} title={formatTime(row.ts)}>
+                  <time className="meta when" dateTime={row.ts} title={formatTime(row.ts)}>
+                    <Icon name="clock" size={14} />
                     {ago(row.ts)}
                   </time>
                 </li>
               ))}
             </ul>
-            <p className="meta">
-              <Link to="/activity">See the whole activity log</Link>
+            <p className="more">
+              <ArrowLink to="/activity">See the whole activity log</ArrowLink>
             </p>
           </>
         ))}
@@ -185,10 +190,16 @@ export default function Home() {
   return (
     <>
       <PageHeader description="What needs you, and where to go next." />
-      <Checklist />
-      <NeedsYou />
-      <StartSomething />
-      <Recently />
+      <div className="home-grid">
+        <div className="home-main">
+          <NeedsYou />
+          <Recently />
+        </div>
+        <div className="home-side">
+          <Checklist />
+          <StartSomething />
+        </div>
+      </div>
     </>
   )
 }

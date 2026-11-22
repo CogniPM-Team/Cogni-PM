@@ -3,6 +3,7 @@ import { tabPanelProps } from './tabs'
 
 const item = (over: Partial<NavItem>): NavItem => ({
   id: 'x',
+  icon: 'home',
   label: 'X',
   path: '/x',
   section: 'WORK',
@@ -48,7 +49,11 @@ describe('pageInfo', () => {
     expect(pageInfo('/console/some-chat').title).toBe('Agent console')
     expect(pageInfo('/activity').title).toBe('Activity log')
     expect(pageInfo('/settings').title).toBe('Settings')
-    expect(pageInfo('/approvals/abc')).toEqual({ title: 'Review a run', crumb: 'Approvals › Review' })
+    expect(pageInfo('/approvals/abc')).toEqual({
+      title: 'Review a run',
+      crumb: 'Review',
+      parent: { label: 'Approvals', path: '/approvals' },
+    })
   })
 
   it('does not name a page that is switched off, and falls back to the product name', () => {

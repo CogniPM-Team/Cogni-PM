@@ -292,6 +292,9 @@ feat(library): save input documents and reuse them in Draft backlog
 
 **First, before any code:** write down the exact definitions in `phases.md` and get the team to agree: what counts as
 an **edit**, **approval rate**, **rejection rate**, and **time to decision** (when it starts and ends).
+**Status: the definitions are drafted** in [phases.md, "Insights: what the numbers mean"](phases.md#insights-what-the-numbers-mean),
+with a worked example, and are waiting for the team and supervisor to agree (five questions are listed there). The
+backend and the page follow those definitions exactly, and the backend test uses the worked example as its seeded data.
 
 **Build, backend:** `GET /api/insights?from=&to=&task=&mode=` returning the numbers in the table in `ux-plan.md`,
 calculated from data we already store. No new tables.

@@ -116,7 +116,7 @@ function CreatedIssues() {
                   {shown.map((item) => (
                     <tr key={item.issue_key}>
                       <td>
-                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="mono">
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="chip">
                           {item.issue_key}
                         </a>
                         <div>{item.title}</div>
@@ -145,7 +145,9 @@ function CreatedIssues() {
                       </td>
                       <td>{item.approved_by ? actorLabel(item.approved_by) : ''}</td>
                       <td>
-                        <Link to={`/approvals/${item.run_id}`}>{item.run_id.slice(0, 8)}</Link>
+                        <Link className="chip" to={`/approvals/${item.run_id}`}>
+                          {item.run_id.slice(0, 8)}
+                        </Link>
                       </td>
                     </tr>
                   ))}

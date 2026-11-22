@@ -1,8 +1,11 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import type { DocumentSummary, SavedDocument, StartedRun, StartRunBody, Story } from '../api/types'
 import { useFetch } from '../api/useFetch'
 import { notifyRunsChanged } from '../lib/chatEvents'
+import FileButton from './FileButton'
+import Icon from './Icon'
 import Spinner from './Spinner'
 
 const MAX_INPUT = 200_000 // the API's limit
@@ -30,6 +33,7 @@ export default function TaskStarter({ initialTask = 'p1', initialDocumentId = nu
   const [documentId, setDocumentId] = useState<string | null>(null) // the saved document the text came from
   const [saving, setSaving] = useState<{ title: string } | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
+  const [fileName, setFileName] = useState<string | null>(null) // the file the text was loaded from
 
   async function loadDocument(id: string) {
     try {
@@ -76,6 +80,8 @@ export default function TaskStarter({ initialTask = 'p1', initialDocumentId = nu
     }
     setError(null)
     setText(content)
+    setFileName(file.name)
+    setDocumentId(null)
   }
 
   async function start() {
@@ -90,6 +96,7 @@ export default function TaskStarter({ initialTask = 'p1', initialDocumentId = nu
       onStarted(started.run_id, task)
       notifyRunsChanged()
       setText('')
+      setFileName(null)
       setInstructions('')
       setStoryKey(null)
       setDocumentId(null)
@@ -103,9 +110,13 @@ export default function TaskStarter({ initialTask = 'p1', initialDocumentId = nu
 
   return (
     <section aria-label="Start a task" className="mode-M2 card task-card">
-      <p className="notice good">
+      <p className="safe-note">
+        <span className="safe-icon" aria-hidden="true">
+          <Icon name="shield" size={18} />
+        </span>
         <span>
-          <strong>Nothing is created in Jira until you approve it</strong> in Approvals.
+          <strong>Nothing is created in Jira until you approve it.</strong> Drafts wait for you in{' '}
+          <Link to="/approvals">Approvals</Link>.
         </span>
       </p>
 
@@ -151,16 +162,16 @@ export default function TaskStarter({ initialTask = 'p1', initialDocumentId = nu
                 value={text}
                 onChange={(e) => {
                   setText(e.target.value)
-                  if (e.target.value === '') setDocumentId(null)
+                  if (e.target.value === '') {
+                    setDocumentId(null)
+                    setFileName(null)
+                  }
                   setSaved(null)
                 }}
                 placeholder="Paste the text here. Use anonymised or synthetic text if the project is sensitive: it is sent to the AI model."
               />
             </label>
-            <label className="field">
-              <span>Or load a text file</span>
-              <input type="file" accept=".txt,.md,text/plain,text/markdown" onChange={(e) => void load(e.target.files?.[0])} />
-            </label>
+            <FileButton label="Load a text file" fileName={fileName} onFile={(file) => void load(file)} />
             {saved ? (
               <p className="meta" role="status">
                 Saved to your library as {saved}.

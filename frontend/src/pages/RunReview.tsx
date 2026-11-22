@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
 import type { ApproveResult, AuditPage, RerunResult, RunDetail } from '../api/types'
 import { useFetch } from '../api/useFetch'
+import ArrowLink from '../components/ArrowLink'
 import DraftCard from '../components/DraftCard'
 import { EmptyState, ErrorState, Tabs } from '../components/PageParts'
 import { ModePill, StatusPill } from '../components/Pills'
@@ -149,7 +150,8 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
           </div>
           {/* Back goes to wherever you came from (Home, Approvals, the activity log). Opened directly, there is no
               "before", so it falls back to Approvals. */}
-          <Link
+          <ArrowLink
+            back
             to="/approvals"
             onClick={(event) => {
               if (location.key === 'default') return
@@ -158,7 +160,7 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
             }}
           >
             Back
-          </Link>
+          </ArrowLink>
         </div>
         <h3>{TASK_NAMES[run.task_type] ?? run.task_type}</h3>
         <p style={{ margin: '4px 0 12px' }}>{detail.status_note}</p>
