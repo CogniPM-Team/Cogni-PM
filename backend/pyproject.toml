@@ -5,27 +5,40 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cognipm-backend"
 version = "0.1.0"
-description = "CogniPM backend: Jira connection today; MCP gateway, orchestrator and API to come"
+description = "CogniPM backend: Jira client, Postgres schema and mode-scoped MCP gateway; orchestrator and API"
 requires-python = ">=3.11"
 # Only what the code uses today. Add a dependency in the same PR that first imports it.
-# Intended stack for the rest (see README): FastAPI, LangGraph, the MCP SDK, Gemini
-# (google-genai), PostgreSQL + pgvector (psycopg).
 dependencies = [
+    "fastapi>=0.141.1",  # the control-plane API (Phase 5)
+    "google-genai>=2.22.0",  # Gemini, the orchestrator's model (Phase 3)
     "httpx>=0.28.1",
+    "langgraph>=1.0",  # the orchestrator's graphs (Phase 3)
+    "mcp>=2.1.1",  # the gateway server (Phase 2) and the orchestrator's client (Phase 3)
+    "psycopg[binary]>=3.2",  # PostgreSQL driver (Phase 2)
+    "pydantic>=2.0",  # request, response and draft schemas
     "python-dotenv>=1.2.3",
+    "uvicorn>=0.52.4",  # serves the API (Phase 5)
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",  # the orchestrator is async (Phase 3)
     "ruff>=0.6",
 ]
+# A throwaway Postgres for the database tests when you have no Docker (see tests/conftest.py).
+embedded-db = ["pgserver"]
+
+[tool.setuptools.package-data]
+"cognipm.db" = ["migrations/*.sql"]
 
 [tool.setuptools.packages.find]
 include = ["cognipm*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
 line-length = 110
@@ -33,5 +46,6 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# B008: FastAPI's `Depends()` in argument defaults is the framework's idiom.
 # E501: the formatter owns line length; it can't split long strings.
-ignore = ["E501"]
+ignore = ["B008", "E501"]

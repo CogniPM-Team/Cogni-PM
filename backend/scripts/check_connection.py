@@ -33,6 +33,10 @@ def main() -> int:
             f"\nProject: {project['key']} - {project['name']} [{project['projectTypeKey']}, {project['style']}]"
         )
 
+        print("\nIssue types in this project (ids differ per Jira site; the code looks them up by name):")
+        for issue_type in client.list_issue_types():
+            print(f"  {issue_type.id}  |  {issue_type.name}{'  (sub-task)' if issue_type.subtask else ''}")
+
         print("\nStory point field(s) found via /rest/api/3/field:")
         for field in client.discover_field("story point"):
             marker = " <- configured in .env" if field["id"] == client.config.story_points_field else ""

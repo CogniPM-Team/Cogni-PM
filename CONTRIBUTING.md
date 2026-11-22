@@ -19,17 +19,24 @@ Commit / PR title style: `feat: add milestone guardrail`, `fix: handle empty Jir
 ## Run the checks locally (same as CI)
 
 ```bash
-cd backend
+# backend (from backend/): the tests need PostgreSQL and wipe their database, so use a separate one
+docker exec cognipm-db createdb -U cognipm cognipm_test          # once; see README.md
 pip install -e ".[dev]"
-ruff check . && ruff format --check . && pytest -q
+ruff check . && ruff format --check .
+DATABASE_URL=postgresql://cognipm:cognipm@localhost:5432/cognipm_test pytest -q
+
+# frontend (from frontend/)
+npm ci && npm run lint && npx tsc --noEmit && npm test && npm run build
 ```
 
-`ruff format .` fixes formatting for you. The frontend has no checks yet (see `frontend/README.md`).
+`ruff format .` fixes formatting for you. If you change an API route or schema, regenerate the frontend's types
+(`python scripts/export_openapi.py` in `backend/`, then `npm run gen:api` in `frontend/`) and commit both files; CI
+fails if they are stale.
 
 ## Rules that matter
 
 - **Add a dependency in the same PR that first imports it**, and say why in the PR description.
 - **Never print to stdout in backend code.** The MCP gateway speaks over stdio; a stray `print()` silently breaks it. Log to stderr.
 - **Never commit secrets.** Copy `.env.example` to `.env` locally. Production secrets live in GitHub Environments and the hosting platforms.
-- **Test the refusal paths.** For anything that gates a write (a guardrail, a missing approval token, a tool that must not exist at a level), the test that matters is the one proving the system *refuses*.
+- **Test the refusal paths.** For anything that gates a write (a guardrail, a missing approval token, a tool that must not exist at a mode), the test that matters is the one proving the system *refuses*.
 - **Tests must not need credentials or network.** Use `httpx.MockTransport` for Jira (see `backend/tests/test_jira.py`). Only `scripts/` talks to a real site.
