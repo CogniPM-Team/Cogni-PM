@@ -58,7 +58,7 @@ export default function Layout() {
               .map((group) => (
                 <div key={group.section} role="group" aria-label={group.section.toLowerCase()}>
                   <span className="nav-label" aria-hidden="true">
-                    {group.section}
+                    {group.section.charAt(0) + group.section.slice(1).toLowerCase()}
                   </span>
                   {group.items.map(renderItem)}
                 </div>

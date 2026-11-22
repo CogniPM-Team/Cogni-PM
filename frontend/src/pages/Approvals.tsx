@@ -130,9 +130,9 @@ export default function Approvals() {
               Nothing is waiting. Start a task in the <Link to="/console">Agent console</Link>.
             </EmptyState>
           ) : (
-            <div className="queue">
+            <div className="queue stack">
               {data.waiting.map((run) => (
-                <RunCard key={run.id} run={run} />
+                <RunCard key={run.id} run={run} wide />
               ))}
             </div>
           )

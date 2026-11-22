@@ -6,13 +6,14 @@ import { ModePill } from './Pills'
 
 /**
  * A run that needs a decision, as a card you can press anywhere. Each fact has its own icon (where it came from, how
- * many drafts, how long it has waited) so the card reads at a glance. Used on Home and on Approvals.
+ * many drafts, how long it has waited) so the card reads at a glance. Narrow on Home; `wide` lays the same parts out
+ * in one row for the Approvals inbox, where there is room and a list is quicker to scan than a grid.
  */
-export default function RunCard({ run, retry = false }: { run: RunSummary; retry?: boolean }) {
+export default function RunCard({ run, retry = false, wide = false }: { run: RunSummary; retry?: boolean; wide?: boolean }) {
   const story = run.task_type === 'p2'
   const overdue = run.ready_at !== null && waitingOverADay(run.ready_at)
   return (
-    <article className={`run-card clickable mode-${run.mode}`}>
+    <article className={`run-card clickable mode-${run.mode}${wide ? ' wide' : ''}`}>
       <div className="run-card-top">
         <ModePill mode={run.mode} />
         {overdue && (
@@ -50,7 +51,7 @@ export default function RunCard({ run, retry = false }: { run: RunSummary; retry
           </li>
         )}
       </ul>
-      <Link className="button-link small primary with-icon stretch" to={`/approvals/${run.id}`}>
+      <Link className="button-link small with-icon stretch" to={`/approvals/${run.id}`}>
         {retry ? 'Open to retry' : 'Review'}
         <Icon name="arrow" size={14} />
       </Link>

@@ -127,7 +127,7 @@ function LogLine({
         )}
         <span className="log-run">
           {item.runId && (
-            <Link className="chip" to={`/approvals/${item.runId}`}>
+            <Link className="id-chip" to={`/approvals/${item.runId}`}>
               {item.runId.slice(0, 8)}
             </Link>
           )}

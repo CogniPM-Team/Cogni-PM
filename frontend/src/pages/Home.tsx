@@ -23,7 +23,14 @@ function NeedsYou() {
 
   return (
     <section aria-labelledby="home-needs">
-      <h2 id="home-needs">Needs you</h2>
+      <div className="section-head">
+        <h2 id="home-needs">Needs you</h2>
+        {runs.data && (
+          <span className="tab-count" aria-hidden="true">
+            {runs.data.waiting.length + runs.data.past.filter((r) => r.status === 'failed' && r.draft_count > 0).length}
+          </span>
+        )}
+      </div>
       {runs.loading && <p className="muted">Loading...</p>}
       {runs.error && <ErrorState title="Could not load your runs" message={runs.error.message} onRetry={runs.reload} />}
       {runs.data &&

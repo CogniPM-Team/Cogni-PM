@@ -85,7 +85,7 @@ describe('Activity log', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
     const chip = screen.getByRole('link', { name: 'run-1' })
-    expect(chip).toHaveClass('chip')
+    expect(chip).toHaveClass('id-chip')
     expect(chip).toHaveAttribute('href', '/approvals/run-1')
     await user.click(chip)
     expect(toggle).toHaveAttribute('aria-expanded', 'true') // the link followed its address, it did not toggle the row
@@ -114,7 +114,7 @@ describe('Activity log', () => {
     await user.click(await screen.findByRole('button', { name: /Answered a question/ }))
 
     expect(screen.getByText(/2 read/)).toBeInTheDocument() // the note, with the session shown as a tag
-    expect(document.querySelector('a.chip')).toBeNull() // no run, so no run link
+    expect(document.querySelector('a.id-chip')).toBeNull() // no run, so no run link
   })
 
   it('shows an entry that has nothing more to say as a plain line with nothing to open', async () => {

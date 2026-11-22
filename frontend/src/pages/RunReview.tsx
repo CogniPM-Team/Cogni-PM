@@ -143,28 +143,29 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
   return (
     <>
       <div className={`card mode-${run.mode}`}>
-        <div className="queue-top">
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <ModePill mode={run.mode} />
-            <StatusPill status={run.status} />
-          </div>
+        <div className="run-head">
+          <h3>{TASK_NAMES[run.task_type] ?? run.task_type}</h3>
+          <ModePill mode={run.mode} />
+          <StatusPill status={run.status} />
           {/* Back goes to wherever you came from (Home, Approvals, the activity log). Opened directly, there is no
               "before", so it falls back to Approvals. */}
-          <ArrowLink
-            back
-            to="/approvals"
-            onClick={(event) => {
-              if (location.key === 'default') return
-              event.preventDefault()
-              navigate(-1)
-            }}
-          >
-            Back
-          </ArrowLink>
+          <span className="run-back">
+            <ArrowLink
+              back
+              to="/approvals"
+              onClick={(event) => {
+                if (location.key === 'default') return
+                event.preventDefault()
+                navigate(-1)
+              }}
+            >
+              Back
+            </ArrowLink>
+          </span>
         </div>
-        <h3>{TASK_NAMES[run.task_type] ?? run.task_type}</h3>
-        <p style={{ margin: '4px 0 12px' }}>{detail.status_note}</p>
+        <p className="run-note">{detail.status_note}</p>
         <dl className="run-meta">
+          <div>
           <dt>Asked to work on</dt>
           <dd>
             {detail.parent_story ? (
@@ -175,41 +176,44 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
               run.scope
             )}
           </dd>
+          </div>
+          <div>
           <dt>Drafted by</dt>
           <dd>{actorLabel(run.agent)}</dd>
+          </div>
           {run.ready_at && (
-            <>
+            <div>
               <dt>Ready for review</dt>
               <dd>
                 {formatTime(run.ready_at)} ({ago(run.ready_at)})
               </dd>
-            </>
+            </div>
           )}
           {detail.instructions && (
-            <>
+            <div>
               <dt>Instructions</dt>
               <dd>{detail.instructions}</dd>
-            </>
+            </div>
           )}
           {run.rerun_of && (
-            <>
+            <div>
               <dt>Replaces</dt>
               <dd>
                 <Link to={`/approvals/${run.rerun_of}`}>an earlier attempt</Link>
               </dd>
-            </>
+            </div>
           )}
           {run.comment && (
-            <>
+            <div>
               <dt>Note</dt>
               <dd>{run.comment}</dd>
-            </>
+            </div>
           )}
           {detail.seconds_to_decision != null && (
-            <>
+            <div>
               <dt>Time to decide</dt>
               <dd>{duration(detail.seconds_to_decision)}</dd>
-            </>
+            </div>
           )}
         </dl>
       </div>

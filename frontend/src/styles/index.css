@@ -38,10 +38,10 @@
   --mark-strong: #ffd84d;
 
   --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
+  --text-sm: 0.8125rem;
   --text-base: 0.9375rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.375rem;
+  --text-lg: 1rem;
+  --text-xl: 1.25rem;
   --text-title: 1.75rem;
 
   --radius: 16px;
@@ -442,7 +442,7 @@ input[type='date'] { font: inherit; padding: 7px 10px; border: 1px solid var(--c
    an arrow link, a chip, a card) is drawn as the thing it is and is never underlined. */
 p a, li a { text-decoration: underline; text-decoration-color: rgba(28, 105, 126, 0.35); text-underline-offset: 3px; }
 p a:hover, li a:hover { text-decoration-color: currentColor; }
-.button-link, .link-arrow, a.chip, .nav-item, .home-start a, a.stretch, .crumb a { text-decoration: none; }
+.button-link, .link-arrow, a.id-chip, .nav-item, .home-start a, a.stretch, .crumb a { text-decoration: none; }
 .crumb a { color: inherit; }
 .crumb a:hover { color: var(--brand); text-decoration: underline; }
 
@@ -458,8 +458,8 @@ p a:hover, li a:hover { text-decoration-color: currentColor; }
 .button-link.small { min-height: 28px; padding: 0 14px; font-size: var(--text-sm); line-height: 26px; }
 
 /* An identifier (a run, an issue key) as a small chip you can press. */
-a.chip { display: inline-block; padding: 1px 9px; border-radius: 10px; background: var(--brand-wash); color: var(--brand); font-family: var(--mono); font-size: var(--text-xs); line-height: 20px; }
-a.chip:hover { background: var(--brand-tint); }
+a.id-chip { display: inline-flex; align-items: center; min-height: 0; padding: 1px 9px; border-radius: 10px; background: var(--brand-wash); color: var(--brand); font-family: var(--mono); font-size: var(--text-xs); line-height: 20px; }
+a.id-chip:hover { background: var(--brand-tint); }
 
 button.link:hover:not(:disabled) { border: none; background: var(--brand-wash); }
 button.link.danger { color: var(--red); }
@@ -643,3 +643,60 @@ label.field > span { color: var(--text); font-weight: 500; }
   .log-mode, .log-latest, .log-heads { display: none; }
   .log-body { padding-left: 20px; overflow-x: auto; }
 }
+
+/* ---------- design review ---------- */
+/* Type, six steps and no more: 12 (tags, small labels), 13 (detail, buttons), 15 (reading), 16 (titles of cards and
+   rows), 20 (section headings), 28 (the page). Each step is far enough from the next to be seen as a step. */
+h2 { font-size: var(--text-xl); letter-spacing: -0.01em; }
+h3 { font-size: var(--text-lg); }
+.meta { font-size: var(--text-sm); }
+.queue-title, .run-card-title h3, .draft-title { font-size: var(--text-lg); }
+.section-head { display: flex; align-items: center; gap: 10px; margin: 32px 0 12px; }
+.section-head h2 { margin: 0; }
+.home-grid > div > section:first-child .section-head { margin-top: 0; }
+
+/* Labels read as labels by being small and quiet, not by being capitals. */
+th, .nav-label, .draft-body h4, .run-meta dt, .log-heads { text-transform: none; letter-spacing: 0; font-size: var(--text-sm); font-weight: 500; }
+.nav-label { margin: 18px 0 4px 14px; }
+.draft-body h4 { margin: 16px 0 4px; font-weight: 600; color: var(--text-muted); }
+
+/* Colour: the mode pill is the one place a card shows its mode colour. Navigation and badges stay neutral so the colour
+   that appears means something. */
+.task-badge { background: var(--border-soft); color: var(--text-muted); }
+.home-start .task-badge { background: var(--border-soft); color: var(--text-muted); }
+.nav-item.active { background: var(--brand-wash); color: var(--brand); }
+.nav-item:hover:not(.active) { background: var(--bg); }
+
+/* Cards are for the things you act on. A list you only read (recent activity, places to start) is one panel with
+   hairlines between its rows, so the page is not a wall of identical boxes. */
+.home-list, .home-start { display: flex; flex-direction: column; gap: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-card); }
+.home-row, .home-start a { border: 0; border-bottom: 1px solid var(--border-soft); border-radius: 0; box-shadow: none; background: transparent; }
+.home-row:last-child, .home-start a:last-child { border-bottom: 0; }
+.home-row.clickable:hover, .home-start a:hover { border-color: var(--border-soft); box-shadow: none; background: var(--surface-soft); }
+.home-row .stretch { color: var(--text-strong); }
+.home-row .stretch:hover { color: var(--brand); }
+.home-side .home-start { grid-template-columns: none; }
+
+/* A run waiting for a decision keeps its own card, with a quiet button: the card is already one press. */
+.run-card .button-link { color: var(--brand); border-color: var(--line-strong); }
+.run-card .button-link:hover { border-color: var(--brand); background: var(--brand-wash); }
+
+/* The Approvals inbox: one run per row, the whole width used, the facts side by side. */
+.queue.stack { display: flex; flex-direction: column; gap: 10px; }
+.run-card.wide { display: grid; grid-template-columns: minmax(240px, 1.2fr) minmax(0, 2fr) auto; grid-template-areas: 'top facts action' 'title facts action'; align-items: center; gap: 6px 32px; padding: 14px 20px; }
+.run-card.wide .run-card-top { grid-area: top; justify-content: flex-start; gap: 10px; }
+.run-card.wide .run-card-title { grid-area: title; }
+.run-card.wide .facts { grid-area: facts; flex-direction: row; flex-wrap: wrap; gap: 6px 22px; }
+.run-card.wide .button-link { grid-area: action; align-self: center; margin-top: 0; }
+@media (max-width: 1000px) {
+  .run-card.wide { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'top action' 'title action' 'facts action'; }
+}
+
+/* The head of a run: what it is, in one row, then the facts side by side so the drafts start higher on the page. */
+.run-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.run-head h3 { margin-right: 4px; font-size: var(--text-xl); }
+.run-back { margin-left: auto; }
+.run-note { margin: 6px 0 14px; color: var(--text-muted); }
+.run-meta { display: flex; flex-wrap: wrap; gap: 10px 40px; margin: 0; padding-top: 14px; border-top: 1px solid var(--border-soft); }
+.run-meta > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.run-meta dt { color: var(--text-faint); }

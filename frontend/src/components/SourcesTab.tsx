@@ -160,7 +160,7 @@ function Row({ doc, reload }: { doc: DocumentSummary; reload: () => void }) {
         </td>
         <td>{doc.used_in_runs === 0 ? 'Not used yet' : `Used in ${plural(doc.used_in_runs, 'run')}`}</td>
         <td className="doc-actions">
-          <Link className="button-link small primary with-icon" to={`/console?mode=M2&document=${doc.id}`}>
+          <Link className="button-link small with-icon" to={`/console?mode=M2&document=${doc.id}`}>
             Draft a backlog from this
             <Icon name="arrow" size={14} />
           </Link>
