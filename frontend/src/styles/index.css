@@ -369,3 +369,18 @@ button.primary .spinner { border-color: rgba(255, 255, 255, 0.35); border-top-co
 .checklist li.done { color: var(--text-muted); }
 .check { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: 1.5px solid var(--control); border-radius: 50%; font-size: 12px; }
 .checklist li.done .check { background: var(--brand-tint); border-color: var(--brand); color: var(--brand); }
+
+/* ---------- Settings ---------- */
+.side-foot { padding: 0 8px 8px; }
+.settings-section { margin-bottom: 16px; }
+.settings-section h2 { margin: 0 0 12px; }
+.settings-section h3 { margin: 0 0 4px; }
+.connection { padding: 12px 0; border-top: 1px solid var(--border-soft); }
+.connection:first-of-type { border-top: 0; padding-top: 0; }
+.connection-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.connection .notice, .connection .error { margin: 10px 0 0; }
+.mode-block { padding: 10px 0; border-top: 1px solid var(--border-soft); }
+.mode-block p { margin: 4px 0; }
+.tool-list, .rule-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.rule-list li { display: flex; flex-direction: column; }
+.rule-list strong { text-transform: capitalize; }

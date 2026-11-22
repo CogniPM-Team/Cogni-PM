@@ -255,6 +255,33 @@ class ProjectOut(BaseModel):
     jira_host: str
 
 
+class GuardrailOut(BaseModel):
+    name: str = Field(description="The rule's id, as it appears in the activity log when it refuses a draft")
+    description: str
+
+
+class SettingsOut(BaseModel):
+    """How this CogniPM is set up. Never carries a secret: only whether a key is set, never the key."""
+
+    version: str
+    jira_host: str
+    jira_project: str
+    story_points_field_set: bool
+    ai_model: str
+    ai_key_set: bool
+    max_items_per_run: int
+    guardrails: list[GuardrailOut]
+    sent_to_model: list[str] = Field(description="Plain sentences: what leaves this machine for the AI model")
+
+
+class ConnectionTestOut(BaseModel):
+    ok: bool
+    detail: str | None = Field(
+        default=None, description="On success: who or what answered (never an email or key)"
+    )
+    problem: str | None = Field(default=None, description="On failure: what went wrong and what to check")
+
+
 class StoryOut(BaseModel):
     key: str
     summary: str

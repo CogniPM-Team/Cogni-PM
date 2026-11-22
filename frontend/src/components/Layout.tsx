@@ -1,7 +1,7 @@
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import type { Project, RunList } from '../api/types'
 import { useFetch } from '../api/useFetch'
-import { pageInfo, visibleNav } from '../lib/nav'
+import { type NavItem, pageInfo, visibleNav } from '../lib/nav'
 
 export default function Layout() {
   const { pathname } = useLocation()
@@ -10,6 +10,18 @@ export default function Layout() {
   const { data: project } = useFetch<Project>('/api/project')
   const { title, crumb } = pageInfo(pathname)
   const waiting = runs?.awaiting_review_count ?? 0
+  const groups = visibleNav()
+
+  const renderItem = (item: NavItem) => (
+    <NavLink key={item.id} to={item.path} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+      {item.label}
+      {item.badge === 'waiting' && waiting > 0 && (
+        <span className="nav-badge" aria-label={`${waiting} waiting for you`}>
+          {waiting}
+        </span>
+      )}
+    </NavLink>
+  )
 
   return (
     <div className="app">
@@ -23,25 +35,23 @@ export default function Layout() {
 
         <div className="side-scroll">
           <nav className="side-nav" aria-label="Main">
-            {visibleNav().map((group) => (
-              <div key={group.section} role="group" aria-label={group.section.toLowerCase()}>
-                <span className="nav-label" aria-hidden="true">
-                  {group.section}
-                </span>
-                {group.items.map((item) => (
-                  <NavLink key={item.id} to={item.path} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-                    {item.label}
-                    {item.badge === 'waiting' && waiting > 0 && (
-                      <span className="nav-badge" aria-label={`${waiting} waiting for you`}>
-                        {waiting}
-                      </span>
-                    )}
-                  </NavLink>
-                ))}
-              </div>
-            ))}
+            {groups
+              .filter((group) => group.section !== 'SYSTEM')
+              .map((group) => (
+                <div key={group.section} role="group" aria-label={group.section.toLowerCase()}>
+                  <span className="nav-label" aria-hidden="true">
+                    {group.section}
+                  </span>
+                  {group.items.map(renderItem)}
+                </div>
+              ))}
           </nav>
         </div>
+
+        {/* Setup pages sit at the bottom, out of the scrolling list, so they are always in the same place. */}
+        <nav className="side-nav side-foot" aria-label="System">
+          {groups.filter((group) => group.section === 'SYSTEM').flatMap((group) => group.items.map(renderItem))}
+        </nav>
 
         <div className="jira-card">
           <span>

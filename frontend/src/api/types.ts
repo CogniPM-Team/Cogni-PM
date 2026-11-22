@@ -27,5 +27,7 @@ export type Mode = Schemas['ModeOut']
 export type Story = Schemas['StoryOut']
 export type Project = Schemas['ProjectOut']
 export type StartRunBody = Schemas['StartRunBody']
+export type Settings = Schemas['SettingsOut']
+export type ConnectionTest = Schemas['ConnectionTestOut']
 
 export type AuditFilter = AuditPage['filter']

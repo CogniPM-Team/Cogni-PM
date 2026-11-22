@@ -138,6 +138,10 @@ feat(frontend): add a Home page with what needs you, quick starts and a first-ru
 
 ## U2. Settings
 
+**Status: done.** Differences from the plan: the guardrail sentences live in `api/routes/settings.py` (the docstrings
+in `guardrails.py` are written for developers, and a test fails if a rule has no sentence); the Jira test reports a
+display name, never an email; Settings is a separate `SYSTEM` group at the bottom of the sidebar.
+
 **Goal:** show how the system is set up and what the AI is allowed to do. Read-only, plus connection tests.
 
 **Build, backend:**

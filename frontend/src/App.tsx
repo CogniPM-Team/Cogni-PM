@@ -6,6 +6,7 @@ import Approvals from './pages/Approvals'
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 import RunReview from './pages/RunReview'
+import Settings from './pages/Settings'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="approvals" element={<Approvals />} />
         <Route path="approvals/:id" element={<RunReview />} />
         <Route path="activity" element={<Activity />} />
+        <Route path="settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

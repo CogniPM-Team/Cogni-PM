@@ -499,6 +499,43 @@
         "title": "ChatSessionOut",
         "type": "object"
       },
+      "ConnectionTestOut": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "On success: who or what answered (never an email or key)",
+            "title": "Detail"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "On failure: what went wrong and what to check",
+            "title": "Problem"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "ConnectionTestOut",
+        "type": "object"
+      },
       "CreatedIssue": {
         "properties": {
           "change_id": {
@@ -663,6 +700,25 @@
           "name"
         ],
         "title": "FolderBody",
+        "type": "object"
+      },
+      "GuardrailOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "description": "The rule's id, as it appears in the activity log when it refuses a draft",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description"
+        ],
+        "title": "GuardrailOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1136,6 +1192,67 @@
           }
         },
         "title": "SessionPatch",
+        "type": "object"
+      },
+      "SettingsOut": {
+        "description": "How this CogniPM is set up. Never carries a secret: only whether a key is set, never the key.",
+        "properties": {
+          "ai_key_set": {
+            "title": "Ai Key Set",
+            "type": "boolean"
+          },
+          "ai_model": {
+            "title": "Ai Model",
+            "type": "string"
+          },
+          "guardrails": {
+            "items": {
+              "$ref": "#/components/schemas/GuardrailOut"
+            },
+            "title": "Guardrails",
+            "type": "array"
+          },
+          "jira_host": {
+            "title": "Jira Host",
+            "type": "string"
+          },
+          "jira_project": {
+            "title": "Jira Project",
+            "type": "string"
+          },
+          "max_items_per_run": {
+            "title": "Max Items Per Run",
+            "type": "integer"
+          },
+          "sent_to_model": {
+            "description": "Plain sentences: what leaves this machine for the AI model",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sent To Model",
+            "type": "array"
+          },
+          "story_points_field_set": {
+            "title": "Story Points Field Set",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "jira_host",
+          "jira_project",
+          "story_points_field_set",
+          "ai_model",
+          "ai_key_set",
+          "max_items_per_run",
+          "guardrails",
+          "sent_to_model"
+        ],
+        "title": "SettingsOut",
         "type": "object"
       },
       "SourceSpan": {
@@ -2214,6 +2331,71 @@
         "summary": "Rerun",
         "tags": [
           "runs"
+        ]
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "operationId": "read_settings_api_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/test-jira": {
+      "post": {
+        "description": "Ask Jira who we are signed in as, then whether the project is reachable. Reads only.",
+        "operationId": "test_jira_api_settings_test_jira_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Test Jira",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/test-model": {
+      "post": {
+        "description": "The smallest possible request, to prove the key works and has credit. It costs a few tokens.",
+        "operationId": "test_model_api_settings_test_model_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Test Model",
+        "tags": [
+          "settings"
         ]
       }
     },

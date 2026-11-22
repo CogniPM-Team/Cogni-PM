@@ -329,6 +329,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Settings */
+        get: operations["read_settings_api_settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/test-jira": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Jira
+         * @description Ask Jira who we are signed in as, then whether the project is reachable. Reads only.
+         */
+        post: operations["test_jira_api_settings_test_jira_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/test-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Model
+         * @description The smallest possible request, to prove the key works and has credit. It costs a few tokens.
+         */
+        post: operations["test_model_api_settings_test_model_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/stories": {
         parameters: {
             query?: never;
@@ -524,6 +581,21 @@ export interface components {
              */
             updated_at: string;
         };
+        /** ConnectionTestOut */
+        ConnectionTestOut: {
+            /**
+             * Detail
+             * @description On success: who or what answered (never an email or key)
+             */
+            detail?: string | null;
+            /** Ok */
+            ok: boolean;
+            /**
+             * Problem
+             * @description On failure: what went wrong and what to check
+             */
+            problem?: string | null;
+        };
         /** CreatedIssue */
         CreatedIssue: {
             /** Change Id */
@@ -587,6 +659,16 @@ export interface components {
         /** FolderBody */
         FolderBody: {
             /** Name */
+            name: string;
+        };
+        /** GuardrailOut */
+        GuardrailOut: {
+            /** Description */
+            description: string;
+            /**
+             * Name
+             * @description The rule's id, as it appears in the activity log when it refuses a draft
+             */
             name: string;
         };
         /** HTTPValidationError */
@@ -753,6 +835,33 @@ export interface components {
             folder_id?: string | null;
             /** Title */
             title?: string | null;
+        };
+        /**
+         * SettingsOut
+         * @description How this CogniPM is set up. Never carries a secret: only whether a key is set, never the key.
+         */
+        SettingsOut: {
+            /** Ai Key Set */
+            ai_key_set: boolean;
+            /** Ai Model */
+            ai_model: string;
+            /** Guardrails */
+            guardrails: components["schemas"]["GuardrailOut"][];
+            /** Jira Host */
+            jira_host: string;
+            /** Jira Project */
+            jira_project: string;
+            /** Max Items Per Run */
+            max_items_per_run: number;
+            /**
+             * Sent To Model
+             * @description Plain sentences: what leaves this machine for the AI model
+             */
+            sent_to_model: string[];
+            /** Story Points Field Set */
+            story_points_field_set: boolean;
+            /** Version */
+            version: string;
         };
         /** SourceSpan */
         SourceSpan: {
@@ -1449,6 +1558,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_settings_api_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsOut"];
+                };
+            };
+        };
+    };
+    test_jira_api_settings_test_jira_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionTestOut"];
+                };
+            };
+        };
+    };
+    test_model_api_settings_test_model_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionTestOut"];
                 };
             };
         };

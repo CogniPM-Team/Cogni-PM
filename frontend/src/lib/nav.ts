@@ -4,7 +4,7 @@
 // A page that is not built yet is listed with `enabled: false` and simply does not appear: nothing in the sidebar
 // should ever lead to an empty or "coming soon" page. Flip it to true in the same change that adds the page.
 
-export type NavSection = 'WORK' | 'RECORD'
+export type NavSection = 'WORK' | 'RECORD' | 'SYSTEM'
 
 export interface NavItem {
   id: string
@@ -16,13 +16,14 @@ export interface NavItem {
   badge?: 'waiting'
 }
 
-export const SECTIONS: NavSection[] = ['WORK', 'RECORD']
+export const SECTIONS: NavSection[] = ['WORK', 'RECORD', 'SYSTEM'] // SYSTEM is drawn at the bottom of the sidebar
 
 export const NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Home', path: '/home', section: 'WORK', enabled: true },
   { id: 'console', label: 'Agent console', path: '/console', section: 'WORK', enabled: true },
   { id: 'approvals', label: 'Approvals', path: '/approvals', section: 'WORK', enabled: true, badge: 'waiting' },
   { id: 'activity', label: 'Activity log', path: '/activity', section: 'RECORD', enabled: true },
+  { id: 'settings', label: 'Settings', path: '/settings', section: 'SYSTEM', enabled: true },
 ]
 
 /** The sidebar: only enabled items, grouped by section in the order of SECTIONS. Empty sections are dropped. */

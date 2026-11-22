@@ -84,6 +84,11 @@ def issue_creating_site(
         path = request.url.path
         if request.method == "GET" and path == "/rest/api/3/project/TEST":
             return httpx.Response(200, json={"key": "TEST", "issueTypes": ISSUE_TYPES})
+        if request.method == "GET" and path == "/rest/api/3/myself":
+            return httpx.Response(
+                200,
+                json={"accountId": "a1", "displayName": "Test Person", "emailAddress": "tester@example.com"},
+            )
         if request.method == "GET" and "/createmeta/" in path:
             return httpx.Response(200, json={"fields": meta})
         if request.method == "POST" and path == "/rest/api/3/search/jql":

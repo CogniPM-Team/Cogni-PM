@@ -38,6 +38,8 @@ describe('Layout', () => {
     ])
     expect(within(nav).getByRole('group', { name: 'work' })).toBeInTheDocument()
     expect(within(nav).getByRole('group', { name: 'record' })).toBeInTheDocument()
+    // Settings sits apart, at the bottom of the sidebar
+    expect(within(screen.getByRole('navigation', { name: 'System' })).getAllByRole('link').map((l) => l.textContent)).toEqual(['Settings'])
   })
 
   it('shows how many runs wait for you, on Approvals only', async () => {
