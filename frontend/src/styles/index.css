@@ -700,3 +700,33 @@ th, .nav-label, .draft-body h4, .run-meta dt, .log-heads { text-transform: none;
 .run-meta { display: flex; flex-wrap: wrap; gap: 10px 40px; margin: 0; padding-top: 14px; border-top: 1px solid var(--border-soft); }
 .run-meta > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .run-meta dt { color: var(--text-faint); }
+
+/* ---------- a draft: the decision first, the evidence on request ---------- */
+/* What you decide on is the title, what it says and when it is done. The guess to check stays in view. The reasons and
+   the quotes sit one press away, one at a time, so a run of drafts reads as a list of things to decide. */
+.draft-body { margin: 10px 0 0 32px; }
+.draft-body > * + * { margin-top: 14px; }
+.draft-desc p { margin: 0; color: var(--text); line-height: 1.6; }
+.draft-desc p.clamped { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.draft-desc button.link { margin: 2px 0 0 -8px; }
+.draft-part h4 { margin: 0 0 6px; }
+.criteria { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.criteria li { display: flex; align-items: flex-start; gap: 8px; color: var(--text); }
+.criteria .icon { flex: none; margin-top: 4px; color: var(--green-dot); }
+.draft-labels { display: flex; flex-wrap: wrap; gap: 6px; margin-left: 0; padding: 0; list-style: none; }
+.assumption { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border: 0; border-left: 3px solid var(--amber); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: var(--amber-wash); }
+.assumption .icon { flex: none; margin-top: 3px; color: var(--amber-ink); }
+.assumption strong { display: block; color: var(--amber-ink); font-size: var(--text-sm); }
+.assumption p { margin: 2px 0 0; color: var(--text); }
+.draft-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border-soft); }
+.evidence { display: flex; flex-wrap: wrap; gap: 4px; }
+.evidence-tab { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text-muted); font-size: var(--text-sm); font-weight: 500; line-height: 28px; }
+.evidence-tab:hover:not(:disabled) { border-color: transparent; background: var(--border-soft); color: var(--text-strong); }
+.evidence-tab[aria-expanded='true'] { background: var(--brand-wash); color: var(--brand); }
+.evidence-tab[aria-expanded='true'] .tab-count { background: var(--brand-tint); color: var(--brand); }
+.evidence-tab.warn .tab-count { background: var(--amber-tint); color: var(--amber-ink); }
+.evidence-panel { padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-soft); border: 1px solid var(--border-soft); }
+.evidence-panel p { margin: 0; color: var(--text-muted); }
+.evidence-panel p + p { margin-top: 8px; }
+.evidence-panel .quote { margin: 0; color: var(--text); }
+.evidence-panel .quote + .quote { margin-top: 8px; }

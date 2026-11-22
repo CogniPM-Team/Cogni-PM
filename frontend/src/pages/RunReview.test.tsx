@@ -25,7 +25,9 @@ describe('RunReview', () => {
     renderReview()
 
     expect(await screen.findByRole('heading', { name: 'Password reset' })).toBeInTheDocument()
-    expect(screen.getAllByText('The notes ask for this directly.')).toHaveLength(2)
+    expect(screen.queryByText('The notes ask for this directly.')).not.toBeInTheDocument() // the reasons wait to be opened
+    await userEvent.click(screen.getAllByRole('button', { name: 'Why the agent drafted this' })[0])
+    expect(screen.getByText('The notes ask for this directly.')).toBeInTheDocument()
     expect(screen.getByText('Check this assumption')).toBeInTheDocument() // the second draft states one
     expect(screen.getByText('Logs are kept for 90 days')).toBeInTheDocument()
     expect(screen.getAllByRole('checkbox').every((box) => !(box as HTMLInputElement).checked)).toBe(true)

@@ -18,6 +18,8 @@ export type IconKey =
   | 'download'
   | 'upload'
   | 'panel'
+  | 'check'
+  | 'info'
   | 'shield'
 
 const DRAWINGS: Record<IconKey, React.ReactNode> = {
@@ -63,6 +65,13 @@ const DRAWINGS: Record<IconKey, React.ReactNode> = {
     </>
   ),
   download: <path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 20h14" />,
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5.5M12 7.5h.01" />
+    </>
+  ),
+  check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
   panel: (
     <>
       <rect x="3" y="4" width="18" height="16" rx="2.5" />

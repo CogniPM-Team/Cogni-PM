@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api/client'
 import type { ChangeEdit, Draft } from '../api/types'
 import { STATUS_LABELS } from '../lib/format'
+import Icon from './Icon'
 
 interface Props {
   draft: Draft
@@ -23,13 +24,33 @@ type Payload = {
   issue_type?: string
 }
 
+const LONG = 260 // characters; beyond this the description is cut to a few lines with a way to read it all
+
+/** A few lines of the description, with the rest one press away, so a long draft does not bury the ones after it. */
+function Description({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  const long = text.length > LONG
+  return (
+    <div className="draft-desc">
+      <p className={long && !open ? 'clamped' : undefined}>{text}</p>
+      {long && (
+        <button type="button" className="link" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? 'Show less' : 'Show more'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function DraftCard({ draft, ticked, canTick, canEdit, onTick, onActivate, onSaved }: Props) {
   const [editing, setEditing] = useState(false)
+  const [evidence, setEvidence] = useState<'why' | 'quotes' | null>(null)
   const effective = draft.effective as Payload
   const original = draft.payload as Payload
   const edited = draft.edited_payload !== null
   const hasAssumption = draft.assumptions.trim().toUpperCase() !== 'NA'
   const done = draft.status === 'applied' || draft.status === 'rejected'
+  const lostQuotes = draft.sources.filter((q) => q.start === null).length
 
   return (
     <article
@@ -81,47 +102,95 @@ export default function DraftCard({ draft, ticked, canTick, canEdit, onTick, onA
           />
         ) : (
           <>
-            {effective.description && <p>{effective.description}</p>}
+            {effective.description && <Description text={effective.description} />}
+
             {effective.acceptance_criteria && effective.acceptance_criteria.length > 0 && (
-              <>
-                <h4>Acceptance criteria</h4>
-                <ul>
+              <section className="draft-part" aria-label="Acceptance criteria">
+                <h4>Done when</h4>
+                <ul className="criteria">
                   {effective.acceptance_criteria.map((c) => (
-                    <li key={c}>{c}</li>
+                    <li key={c}>
+                      <Icon name="check" size={14} />
+                      <span>{c}</span>
+                    </li>
                   ))}
                 </ul>
-              </>
+              </section>
             )}
+
             {effective.labels && effective.labels.length > 0 && (
-              <>
-                <h4>Labels</h4>
-                <p>{effective.labels.join(', ')}</p>
-              </>
+              <ul className="draft-labels" aria-label="Labels">
+                {effective.labels.map((l) => (
+                  <li key={l} className="tag">
+                    {l}
+                  </li>
+                ))}
+              </ul>
             )}
           </>
         )}
 
-        <h4>Why the agent drafted this</h4>
-        <p>{draft.reasoning}</p>
-
-        <h4>{hasAssumption ? 'Check this assumption' : 'Assumptions'}</h4>
-        <p className={`assumption${hasAssumption ? '' : ' none'}`}>{hasAssumption ? draft.assumptions : 'None stated.'}</p>
-
-        <h4>Quoted from your input</h4>
-        {draft.sources.map((source) => (
-          <p key={source.quote} className={`quote${source.start === null ? ' lost' : ''}`}>
-            “{source.quote}”
-            {source.start === null && <span className="muted"> (not found in the saved input)</span>}
-          </p>
-        ))}
+        {/* An assumption is the agent telling you what it guessed, so it stays in view. The rest is evidence you open
+            when you want to check the draft, one piece at a time. */}
+        {hasAssumption && (
+          <div className="assumption" role="note">
+            <Icon name="alert" size={16} />
+            <div>
+              <strong>Check this assumption</strong>
+              <p>{draft.assumptions}</p>
+            </div>
+          </div>
+        )}
 
         {draft.error && <p className="error">Jira refused this one: {draft.error}</p>}
 
-        {canEdit && !editing && (
-          <div className="row-actions">
-            <button type="button" className="small" onClick={() => setEditing(true)}>
-              Edit before approving
-            </button>
+        {!editing && (
+          <div className="draft-foot">
+            <div className="evidence" role="group" aria-label="Evidence">
+              <button
+                type="button"
+                className="evidence-tab"
+                aria-expanded={evidence === 'why'}
+                aria-controls={`${draft.id}-evidence`}
+                aria-label="Why the agent drafted this"
+                title="Why the agent drafted this"
+                onClick={() => setEvidence(evidence === 'why' ? null : 'why')}
+              >
+                Why
+                <Icon name="info" size={14} />
+              </button>
+              <button
+                type="button"
+                className={`evidence-tab${lostQuotes > 0 ? ' warn' : ''}`}
+                aria-expanded={evidence === 'quotes'}
+                aria-controls={`${draft.id}-evidence`}
+                onClick={() => setEvidence(evidence === 'quotes' ? null : 'quotes')}
+              >
+                From your input
+                <span className="tab-count">{draft.sources.length}</span>
+                {lostQuotes > 0 && <span className="sr-only"> ({lostQuotes} not found in the saved input)</span>}
+              </button>
+            </div>
+            {canEdit && (
+              <button type="button" className="small" onClick={() => setEditing(true)}>
+                Edit before approving
+              </button>
+            )}
+          </div>
+        )}
+
+        {evidence && !editing && (
+          <div className="evidence-panel" id={`${draft.id}-evidence`}>
+            {evidence === 'why' ? (
+              <p>{draft.reasoning}</p>
+            ) : (
+              draft.sources.map((source) => (
+                <p key={source.quote} className={`quote${source.start === null ? ' lost' : ''}`}>
+                  “{source.quote}”
+                  {source.start === null && <span className="muted"> (not found in the saved input)</span>}
+                </p>
+              ))
+            )}
           </div>
         )}
       </div>
