@@ -37,6 +37,7 @@ async def start_task_run(
     context_jql: str | None = None,
     instructions: str = "",
     rerun_of: str | None = None,
+    resume_run_id: str | None = None,
 ) -> str:
     """Start the run and return its id. Raises StartFailed if it could not be opened."""
     loop = asyncio.get_running_loop()
@@ -59,6 +60,7 @@ async def start_task_run(
                 context_jql=context_jql,
                 instructions=instructions,
                 rerun_of=rerun_of,
+                resume_run_id=resume_run_id,
                 on_run_started=on_started,
                 **options,
             )
@@ -87,10 +89,11 @@ async def start_task_run(
 
 
 def fail_orphaned_runs(conn: Connection) -> int:
-    """Mark runs that were `running` when the server stopped as failed. Returns how many."""
+    """Mark runs that were in flight (running, paused or waiting for an answer) when the server stopped as failed. Their
+    progress lives in memory, so they cannot carry on. Returns how many."""
     rows = conn.execute(
         "UPDATE runs SET status = 'failed', comment = 'The server restarted while this run was in progress.' "
-        "WHERE status = 'running' RETURNING id"
+        "WHERE status IN ('running', 'paused', 'waiting_for_information') RETURNING id"
     ).fetchall()
     conn.commit()
     return len(rows)

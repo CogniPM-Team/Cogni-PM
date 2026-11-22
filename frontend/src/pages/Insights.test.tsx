@@ -10,6 +10,7 @@ const WORKED: InsightsData = {
   runs_started: 5,
   runs_decided: 4,
   runs_open: 1,
+  runs_ended_early: 0,
   runs_approved: 2,
   runs_rejected: 2,
   drafts_reviewed: 12,
@@ -186,5 +187,16 @@ describe('Insights', () => {
 
     expect(await screen.findByText('Could not load the insights')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+  })
+
+  it('says how many of the open runs a person stopped or cancelled, and says nothing when none were', async () => {
+    mockApi({ 'GET /api/insights': { ...WORKED, runs_open: 3, runs_ended_early: 2 } })
+    const { unmount } = show()
+    expect(await screen.findByText(/5 runs started: 4 decided, 3 still open \(2 of them stopped or cancelled\)\./)).toBeInTheDocument()
+    unmount()
+
+    mockApi({ 'GET /api/insights': WORKED })
+    show()
+    expect(await screen.findByText('5 runs started: 4 decided, 1 still open.')).toBeInTheDocument()
   })
 })

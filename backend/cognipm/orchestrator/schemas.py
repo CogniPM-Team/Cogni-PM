@@ -39,9 +39,18 @@ class SubtaskDraft(_Draft):
     labels: list[str] = Field(default_factory=list)
 
 
+_QUESTIONS = Field(
+    default_factory=list,
+    max_length=3,
+    description="Only when the input is too vague to draft anything useful: no items, and up to three short questions.",
+)
+
+
 class BacklogDrafts(BaseModel):
     items: list[BacklogDraft]
+    questions: list[str] = _QUESTIONS
 
 
 class SubtaskDrafts(BaseModel):
     items: list[SubtaskDraft]
+    questions: list[str] = _QUESTIONS

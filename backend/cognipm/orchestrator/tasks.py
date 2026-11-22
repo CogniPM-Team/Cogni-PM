@@ -34,7 +34,8 @@ from pydantic import ValidationError
 
 from cognipm.config import orchestrator_model
 from cognipm.db.connection import Connection
-from cognipm.orchestrator.mcp_bridge import gateway_params, tool_result_payload
+from cognipm.orchestrator.control import RunEnded, checkpoint, settle
+from cognipm.orchestrator.mcp_bridge import agent_identity, gateway_params, tool_result_payload
 from cognipm.orchestrator.prompts import P1_SYSTEM_PROMPT, P2_SYSTEM_PROMPT, build_p1_prompt, build_p2_prompt
 from cognipm.orchestrator.schemas import BacklogDrafts, SubtaskDrafts
 from cognipm.orchestrator.steps import StepListener, StepRecorder, mark_run_failed, record_input, record_usage
@@ -83,6 +84,11 @@ class _Run:
     change_ids: list[str] = field(default_factory=list)
     existing: str = ""
     error: str | None = None
+    ended: str | None = (
+        None  # how the run ended early without an error: stopped, cancelled or waiting_for_information
+    )
+    question: str | None = None  # what the agent asked, when it is waiting for an answer
+    may_ask: bool = True  # a run asks at most once: after the answer it must draft
 
     # ---------- gateway access ----------
 
@@ -105,10 +111,15 @@ class _Run:
         """Turn an exception in a node into a recorded error that ends the graph."""
 
         async def run(state: _GraphState) -> dict:
-            if self.error:
+            if self.error or self.ended:
                 return {}
             try:
+                if self.run_id is not None:
+                    # Between steps, never in the middle of one: a person's Pause, Stop or Cancel takes effect here.
+                    await checkpoint(self.conn, self.run_id)
                 await node()
+            except RunEnded as ended:
+                self.ended = ended.how
             except Exception as exc:  # noqa: BLE001 - recorded, then raised after the client exits
                 self.error = (
                     str(exc) if isinstance(exc, OrchestratorError) else f"{type(exc).__name__}: {exc}"
@@ -163,6 +174,7 @@ class _Run:
                 existing=self.existing,
                 instructions=self.instructions,
                 feedback=self.feedback,
+                may_ask=self.may_ask,
             )
         else:
             system, schema = P2_SYSTEM_PROMPT, SubtaskDrafts
@@ -171,6 +183,7 @@ class _Run:
                 story_text=self.input_text,
                 instructions=self.instructions,
                 feedback=self.feedback,
+                may_ask=self.may_ask,
             )
         config = genai_types.GenerateContentConfig(
             system_instruction=system, response_mime_type="application/json", response_schema=schema
@@ -195,6 +208,12 @@ class _Run:
             self.dropped.append(self.feedback)
             self.rec("generating", "end", attempt=self.attempt, drafts=0, schema_error=self.feedback)
             return
+        questions = [q.strip() for q in parsed.questions if q.strip()]
+        if not parsed.items and questions and self.may_ask:
+            # Too vague to draft from. Ask, and wait: the run ends here for now and carries on when it is answered.
+            self.question = "\n".join(questions)
+            self.rec("generating", "end", attempt=self.attempt, drafts=0, question=True)
+            raise RunEnded("waiting_for_information")
         self.drafts = [item.model_dump() for item in parsed.items]
         self.rec("generating", "end", attempt=self.attempt, drafts=len(self.drafts))
 
@@ -253,29 +272,30 @@ class _Run:
     # ---------- routing ----------
 
     def after_open(self, state: _GraphState) -> str:
-        return END if self.error else "analyse"
+        return END if self.error or self.ended else "analyse"
 
     def after_analyse(self, state: _GraphState) -> str:
-        return END if self.error else "generate"
+        return END if self.error or self.ended else "generate"
 
     def after_generate(self, state: _GraphState) -> str:
-        return END if self.error else "verify"
+        return END if self.error or self.ended else "verify"
 
     def after_verify(self, state: _GraphState) -> str:
-        if self.error:
+        if self.error or self.ended:
             return END
         if not self.drafts and self.attempt < MAX_ATTEMPTS:
             return "generate"  # nothing usable: try once more, telling the model what was wrong
         return "stage"
 
-    def build(self):
+    def build(self, start: str = "open_run"):
+        """`start` is `analyse` for a run that already exists and is carrying on after an answer."""
         graph = StateGraph(_GraphState)
         graph.add_node("open_run", self.guarded("analysing", self.open_run))
         graph.add_node("analyse", self.guarded("analysing", self.analyse))
         graph.add_node("generate", self.guarded("generating", self.generate))
         graph.add_node("verify", self.guarded("verifying", self.verify))
         graph.add_node("stage", self.guarded("staging", self.stage))
-        graph.add_edge(START, "open_run")
+        graph.add_edge(START, start)
         graph.add_conditional_edges("open_run", self.after_open, {"analyse": "analyse", END: END})
         graph.add_conditional_edges("analyse", self.after_analyse, {"generate": "generate", END: END})
         graph.add_conditional_edges("generate", self.after_generate, {"verify": "verify", END: END})
@@ -329,6 +349,7 @@ async def run_task(
     on_step: StepListener | None = None,
     rerun_of: str | None = None,
     on_run_started: Callable[[str], None] | None = None,
+    resume_run_id: str | None = None,
 ) -> TaskResult:
     """Run P1 (give `input_text`) or P2 (give `story_key`) and return once the drafts are staged and
     the run is `awaiting_review`. Nothing is created in Jira.
@@ -338,6 +359,9 @@ async def run_task(
     model existing backlog items so it avoids duplicates. `gemini` and `mcp_server` are injectable
     for tests: `mcp_server` can be anything `mcp.client.Client` accepts, e.g. an in-process server
     from build_server(), so a test exercises the real tool registration without a subprocess.
+
+    `resume_run_id` carries on a run that stopped to ask a question, from the analysis step, with the answer already
+    added to `instructions`. It does not ask again.
 
     Raises OrchestratorError if the run cannot be opened (the mode has no `start_run`), the story
     cannot be read, no draft can be traced to the input, or the gateway refuses every draft.
@@ -366,10 +390,18 @@ async def run_task(
             instructions=instructions,
             scope=scope or (f"story {story_key}" if task == "p2" else "pasted text"),
         )
-        await run.build().ainvoke({"done": False}, config={"recursion_limit": 25})
+        if resume_run_id:
+            run.run_id, run.rec.run_id, run.may_ask = resume_run_id, resume_run_id, False
+            if on_run_started is not None:
+                on_run_started(resume_run_id)
+        await run.build("analyse" if resume_run_id else "open_run").ainvoke(
+            {"done": False}, config={"recursion_limit": 25}
+        )
 
     if run.error:
         if run.run_id:
             mark_run_failed(conn, run.run_id, run.error)
         raise OrchestratorError(run.error)
+    if run.ended:
+        settle(conn, run.run_id, run.ended, question=run.question, agent=agent_identity())
     return TaskResult(run_id=run.run_id, change_ids=run.change_ids, dropped=run.dropped)

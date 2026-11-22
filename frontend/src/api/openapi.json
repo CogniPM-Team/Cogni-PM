@@ -1,6 +1,21 @@
 {
   "components": {
     "schemas": {
+      "AnswerBody": {
+        "properties": {
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "AnswerBody",
+        "type": "object"
+      },
       "ApplyProblem": {
         "description": "The body of a 502 when Jira refuses part-way through approving: exactly what happened.",
         "properties": {
@@ -663,6 +678,42 @@
         "title": "ConnectionTestOut",
         "type": "object"
       },
+      "ControlResult": {
+        "properties": {
+          "control": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pause",
+                  "stop",
+                  "cancel"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What was asked for and has not happened yet: it takes effect between two steps of the run",
+            "title": "Control"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "control"
+        ],
+        "title": "ControlResult",
+        "type": "object"
+      },
       "CreatedIssue": {
         "properties": {
           "change_id": {
@@ -1148,6 +1199,11 @@
             "title": "Runs Decided",
             "type": "integer"
           },
+          "runs_ended_early": {
+            "description": "Of the open runs, those a person stopped or cancelled",
+            "title": "Runs Ended Early",
+            "type": "integer"
+          },
           "runs_open": {
             "description": "Still working, waiting for review, or failed part-way: left out of every rate",
             "title": "Runs Open",
@@ -1187,6 +1243,7 @@
           "runs_started",
           "runs_decided",
           "runs_open",
+          "runs_ended_early",
           "runs_approved",
           "runs_rejected",
           "drafts_reviewed",
@@ -1411,10 +1468,39 @@
       },
       "RunDetail": {
         "properties": {
+          "can_answer": {
+            "default": false,
+            "description": "The PM may answer the agent's question",
+            "title": "Can Answer",
+            "type": "boolean"
+          },
+          "can_control": {
+            "default": false,
+            "description": "The PM may pause, resume, stop or cancel this run",
+            "title": "Can Control",
+            "type": "boolean"
+          },
           "can_decide": {
             "description": "The PM may still approve, reject or rerun",
             "title": "Can Decide",
             "type": "boolean"
+          },
+          "control": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pause",
+                  "stop",
+                  "cancel"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A pause, stop or cancel that was asked for and has not taken effect yet",
+            "title": "Control"
           },
           "drafts": {
             "items": {
@@ -1459,6 +1545,18 @@
                 "type": "null"
               }
             ]
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the agent asked, while it waits for an answer",
+            "title": "Question"
           },
           "run": {
             "$ref": "#/components/schemas/RunSummary"
@@ -3462,6 +3560,59 @@
         ]
       }
     },
+    "/api/runs/{run_id}/answer": {
+      "post": {
+        "description": "Answer the agent's question. The same run carries on from its analysis step with the answer added to its\ninstructions, and it will not ask again: it drafts what it honestly can.",
+        "operationId": "answer_run_api_runs__run_id__answer_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ControlResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Answer Run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
     "/api/runs/{run_id}/approve": {
       "post": {
         "description": "Create the ticked drafts in Jira. Drafts left out are dropped, not created. Safe to repeat: an\nalready-approved run is refused, and a run that failed part-way creates only what is left.",
@@ -3532,6 +3683,49 @@
         ]
       }
     },
+    "/api/runs/{run_id}/cancel": {
+      "post": {
+        "description": "End a run early and discard whatever it staged. Nothing already in Jira is touched.",
+        "operationId": "cancel_run_api_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ControlResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
     "/api/runs/{run_id}/events": {
       "get": {
         "description": "Server-Sent Events: each step of the run as it is recorded, then an `end` event once it is no longer\nrunning. Reconnecting with Last-Event-ID resumes where the stream left off.",
@@ -3568,6 +3762,49 @@
           }
         },
         "summary": "Run Events",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/pause": {
+      "post": {
+        "description": "Hold a running run at its next step. The step in flight finishes first. Resume carries on.",
+        "operationId": "pause_run_api_runs__run_id__pause_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ControlResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pause Run",
         "tags": [
           "runs"
         ]
@@ -3681,6 +3918,92 @@
           }
         },
         "summary": "Rerun",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/resume": {
+      "post": {
+        "description": "Carry on a paused run, or take back a pause that has not taken effect yet.",
+        "operationId": "resume_run_api_runs__run_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ControlResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resume Run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/stop": {
+      "post": {
+        "description": "End a run early. What is already staged stays.",
+        "operationId": "stop_run_api_runs__run_id__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ControlResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stop Run",
         "tags": [
           "runs"
         ]

@@ -66,6 +66,10 @@ export function runDetail(id = 'run-1', over: Partial<RunDetail> = {}): RunDetai
     editable: true,
     can_decide: true,
     seconds_to_decision: null,
+    control: null,
+    question: null,
+    can_control: false,
+    can_answer: false,
     ...over,
   }
 }

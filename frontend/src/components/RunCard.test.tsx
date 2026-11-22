@@ -42,4 +42,12 @@ describe('RunCard', () => {
 
     expect(screen.queryByText(/^Waiting/)).not.toBeInTheDocument()
   })
+
+  it('shows a run that is waiting for an answer as a question to answer, not as drafts to review', () => {
+    show(<RunCard run={runSummary('r1', { status: 'waiting_for_information', draft_count: 0 })} />)
+
+    expect(screen.getByText('The agent has a question')).toBeInTheDocument()
+    expect(screen.queryByText(/draft/)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Answer' })).toHaveAttribute('href', '/approvals/r1')
+  })
 })

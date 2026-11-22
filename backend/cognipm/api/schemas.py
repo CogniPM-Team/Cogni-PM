@@ -169,6 +169,26 @@ class RunDetail(BaseModel):
     editable: bool = Field(description="The PM may still edit drafts")
     can_decide: bool = Field(description="The PM may still approve, reject or rerun")
     seconds_to_decision: float | None = Field(description="Time from ready for review to the PM's decision")
+    control: Literal["pause", "stop", "cancel"] | None = Field(
+        default=None, description="A pause, stop or cancel that was asked for and has not taken effect yet"
+    )
+    question: str | None = Field(
+        default=None, description="What the agent asked, while it waits for an answer"
+    )
+    can_control: bool = Field(default=False, description="The PM may pause, resume, stop or cancel this run")
+    can_answer: bool = Field(default=False, description="The PM may answer the agent's question")
+
+
+class AnswerBody(BaseModel):
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)]
+
+
+class ControlResult(BaseModel):
+    run_id: str
+    status: str
+    control: Literal["pause", "stop", "cancel"] | None = Field(
+        description="What was asked for and has not happened yet: it takes effect between two steps of the run"
+    )
 
 
 class RunList(BaseModel):
@@ -343,6 +363,7 @@ class InsightsOut(BaseModel):
     runs_open: int = Field(
         description="Still working, waiting for review, or failed part-way: left out of every rate"
     )
+    runs_ended_early: int = Field(description="Of the open runs, those a person stopped or cancelled")
     runs_approved: int = Field(description="Decided runs with at least one draft created")
     runs_rejected: int
     drafts_reviewed: int = Field(description="Drafts of decided runs; the next three add up to this")

@@ -3,6 +3,10 @@ export const TASK_NAMES: Record<string, string> = { p1: 'Draft backlog', p2: 'Br
 
 export const STATUS_LABELS: Record<string, string> = {
   running: 'Working',
+  paused: 'Paused',
+  waiting_for_information: 'Needs your answer',
+  stopped: 'Stopped',
+  cancelled: 'Cancelled',
   awaiting_review: 'Waiting for you',
   applied: 'Approved',
   rejected: 'Rejected',
@@ -105,6 +109,12 @@ const ACTIONS: Record<string, string> = {
   commit_changes: 'Committed changes',
   chat_turn: 'Answered a question',
   delete_chat: 'Deleted a chat',
+  pause_run: 'Paused a run',
+  resume_run: 'Resumed a run',
+  stop_run: 'Stopped a run',
+  cancel_run: 'Cancelled a run',
+  ask_clarification: 'Asked a question',
+  answer_clarification: 'Answered the agent\'s question',
   save_document: 'Saved a document',
   rename_document: 'Renamed a document',
   delete_document: 'Deleted a document',

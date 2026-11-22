@@ -7,8 +7,10 @@ import ArrowLink from '../components/ArrowLink'
 import DraftCard from '../components/DraftCard'
 import { EmptyState, ErrorState, Tabs } from '../components/PageParts'
 import { ModePill, StatusPill } from '../components/Pills'
+import RunControls from '../components/RunControls'
 import SourceText from '../components/SourceText'
 import StepTrace from '../components/StepTrace'
+import { usePolling } from '../hooks/usePolling'
 import { useRunEvents } from '../hooks/useRunEvents'
 import { useActorLabel } from '../lib/auth'
 import { actionLabel, actorLabel, ago, duration, formatTime, plural, TASK_NAMES } from '../lib/format'
@@ -90,6 +92,8 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
   const location = useLocation()
   const [tab, setTab] = useState<RunTab>('drafts')
   const { run, drafts } = detail
+  // A run moving from working to paused is announced by nothing, so look again while it is live.
+  usePolling(reload, run.status === 'running' || run.status === 'paused')
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [active, setActive] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
@@ -220,7 +224,8 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
         </dl>
       </div>
 
-      {run.status === 'running' && <LiveRun runId={run.id} onDone={reload} />}
+      <RunControls detail={detail} onChanged={reload} />
+      {(run.status === 'running' || run.status === 'paused') && <LiveRun runId={run.id} onDone={reload} />}
 
       {created.length > 0 && (
         <div className="notice good" role="status">
@@ -291,7 +296,12 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
 
       {/* Hidden, not removed, when another tab is open: ticks and half-typed edits are still there when you return. */}
       <div {...tabPanelProps('drafts', 'run')} hidden={tab !== 'drafts'} className="run-tab">
-      {drafts.length === 0 && run.status !== 'running' && <EmptyState>This run produced no drafts.</EmptyState>}
+      {drafts.length === 0 && ['awaiting_review', 'applied', 'rejected', 'failed'].includes(run.status) && (
+          <EmptyState>This run produced no drafts.</EmptyState>
+        )}
+        {drafts.length === 0 && ['stopped', 'cancelled'].includes(run.status) && (
+          <EmptyState>This run ended before it staged any drafts.</EmptyState>
+        )}
 
       <div className="review">
         <div>

@@ -792,3 +792,17 @@ th, .nav-label, .draft-body h4, .run-meta dt, .log-heads { text-transform: none;
 .person-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0 12px; align-items: end; }
 .person-form .field { margin-bottom: 8px; }
 .person-form button { margin-bottom: 8px; }
+
+/* ---------- run controls ---------- */
+.status-paused, .status-waiting_for_information { background: var(--amber-tint); color: var(--amber-ink); }
+.status-stopped, .status-cancelled { background: var(--border-soft); color: var(--text-muted); }
+.run-controls { display: flex; flex-direction: column; gap: 12px; }
+.run-controls-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.run-controls-head p { margin: 0; color: var(--text); }
+.control-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.control-buttons button { display: inline-flex; align-items: center; gap: 6px; }
+.question { padding: 12px 14px; border-left: 3px solid var(--amber); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: var(--amber-wash); }
+.question strong { display: block; margin-bottom: 4px; color: var(--amber-ink); font-size: var(--text-sm); }
+.question p { margin: 0; white-space: pre-wrap; }
+.answer-form { display: flex; flex-direction: column; gap: 8px; }
+.answer-form textarea { min-height: 5rem; }

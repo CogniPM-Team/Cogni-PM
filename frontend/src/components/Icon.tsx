@@ -19,6 +19,10 @@ export type IconKey =
   | 'upload'
   | 'panel'
   | 'check'
+  | 'pause'
+  | 'play'
+  | 'stop'
+  | 'close'
   | 'signout'
   | 'info'
   | 'shield'
@@ -74,6 +78,10 @@ const DRAWINGS: Record<IconKey, React.ReactNode> = {
   ),
   insights: <path d="M5 20v-9M12 20V4M19 20v-6" />,
   signout: <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l4 4-4 4M19 12H9" />,
+  pause: <path d="M8.5 5v14M15.5 5v14" />,
+  play: <path d="m7 4.5 12 7.5-12 7.5z" />,
+  stop: <rect x="6" y="6" width="12" height="12" rx="2" />,
+  close: <path d="m6 6 12 12M18 6 6 18" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
   panel: (
     <>

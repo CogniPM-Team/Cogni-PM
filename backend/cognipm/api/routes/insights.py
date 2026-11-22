@@ -93,6 +93,7 @@ def summarise(runs: list[dict], refusals: list[tuple[str, int]]) -> InsightsOut:
         runs_started=len(runs),
         runs_decided=len(decided),
         runs_open=len(runs) - len(decided),
+        runs_ended_early=sum(1 for r in runs if r["status"] in ("stopped", "cancelled")),
         runs_approved=len(approved),
         runs_rejected=len(decided) - len(approved),
         drafts_reviewed=sum(r["reviewed"] for r in decided),

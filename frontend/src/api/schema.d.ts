@@ -430,6 +430,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/runs/{run_id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer Run
+         * @description Answer the agent's question. The same run carries on from its analysis step with the answer added to its
+         *     instructions, and it will not ask again: it drafts what it honestly can.
+         */
+        post: operations["answer_run_api_runs__run_id__answer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs/{run_id}/approve": {
         parameters: {
             query?: never;
@@ -451,6 +472,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/runs/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Run
+         * @description End a run early and discard whatever it staged. Nothing already in Jira is touched.
+         */
+        post: operations["cancel_run_api_runs__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs/{run_id}/events": {
         parameters: {
             query?: never;
@@ -466,6 +507,26 @@ export interface paths {
         get: operations["run_events_api_runs__run_id__events_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{run_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause Run
+         * @description Hold a running run at its next step. The step in flight finishes first. Resume carries on.
+         */
+        post: operations["pause_run_api_runs__run_id__pause_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -507,6 +568,46 @@ export interface paths {
          *     one records which run it replaces, so reruns chain.
          */
         post: operations["rerun_api_runs__run_id__rerun_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{run_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume Run
+         * @description Carry on a paused run, or take back a pause that has not taken effect yet.
+         */
+        post: operations["resume_run_api_runs__run_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{run_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop Run
+         * @description End a run early. What is already staged stays.
+         */
+        post: operations["stop_run_api_runs__run_id__stop_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -651,6 +752,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AnswerBody */
+        AnswerBody: {
+            /** Text */
+            text: string;
+        };
         /**
          * ApplyProblem
          * @description The body of a 502 when Jira refuses part-way through approving: exactly what happened.
@@ -882,6 +988,18 @@ export interface components {
              */
             problem?: string | null;
         };
+        /** ControlResult */
+        ControlResult: {
+            /**
+             * Control
+             * @description What was asked for and has not happened yet: it takes effect between two steps of the run
+             */
+            control: ("pause" | "stop" | "cancel") | null;
+            /** Run Id */
+            run_id: string;
+            /** Status */
+            status: string;
+        };
         /** CreatedIssue */
         CreatedIssue: {
             /** Change Id */
@@ -1110,6 +1228,11 @@ export interface components {
              */
             runs_decided: number;
             /**
+             * Runs Ended Early
+             * @description Of the open runs, those a person stopped or cancelled
+             */
+            runs_ended_early: number;
+            /**
              * Runs Open
              * @description Still working, waiting for review, or failed part-way: left out of every rate
              */
@@ -1221,10 +1344,27 @@ export interface components {
         /** RunDetail */
         RunDetail: {
             /**
+             * Can Answer
+             * @description The PM may answer the agent's question
+             * @default false
+             */
+            can_answer: boolean;
+            /**
+             * Can Control
+             * @description The PM may pause, resume, stop or cancel this run
+             * @default false
+             */
+            can_control: boolean;
+            /**
              * Can Decide
              * @description The PM may still approve, reject or rerun
              */
             can_decide: boolean;
+            /**
+             * Control
+             * @description A pause, stop or cancel that was asked for and has not taken effect yet
+             */
+            control?: ("pause" | "stop" | "cancel") | null;
             /** Drafts */
             drafts: components["schemas"]["DraftOut"][];
             /**
@@ -1237,6 +1377,11 @@ export interface components {
             /** Instructions */
             instructions: string | null;
             parent_story: components["schemas"]["ParentStory"] | null;
+            /**
+             * Question
+             * @description What the agent asked, while it waits for an answer
+             */
+            question?: string | null;
             run: components["schemas"]["RunSummary"];
             /**
              * Seconds To Decision
@@ -2302,6 +2447,41 @@ export interface operations {
             };
         };
     };
+    answer_run_api_runs__run_id__answer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     approve_run_api_runs__run_id__approve_post: {
         parameters: {
             query?: never;
@@ -2346,6 +2526,37 @@ export interface operations {
             };
         };
     };
+    cancel_run_api_runs__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     run_events_api_runs__run_id__events_get: {
         parameters: {
             query?: never;
@@ -2364,6 +2575,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_run_api_runs__run_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlResult"];
                 };
             };
             /** @description Validation Error */
@@ -2434,6 +2676,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RerunResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_run_api_runs__run_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_run_api_runs__run_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlResult"];
                 };
             };
             /** @description Validation Error */

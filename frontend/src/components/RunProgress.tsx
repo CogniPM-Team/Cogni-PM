@@ -2,10 +2,12 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import type { RunDetail } from '../api/types'
 import { useFetch } from '../api/useFetch'
+import { usePolling } from '../hooks/usePolling'
 import { useRunEvents } from '../hooks/useRunEvents'
 import { notifyRunsChanged } from '../lib/chatEvents'
 import { plural, TASK_NAMES } from '../lib/format'
 import { StatusPill } from './Pills'
+import RunControls from './RunControls'
 import StepTrace from './StepTrace'
 
 export interface Snapshot {
@@ -28,7 +30,12 @@ interface Props {
 export default function RunProgress({ runId, task, latest, onSnapshot }: Props) {
   const { steps, status } = useRunEvents(runId)
   const { data: detail } = useFetch<RunDetail>(status ? `/api/runs/${runId}` : null)
-  const shown = detail?.run.status ?? status ?? 'running'
+  // The run as it stands now, for the controls: asked again while it is live, and once more when its steps end.
+  const live = useFetch<RunDetail>(`/api/runs/${runId}?now=${status ?? 'live'}`)
+  const liveStatus = live.data?.run.status
+  usePolling(live.reload, status === null || liveStatus === 'paused')
+  const held = liveStatus === 'paused' || liveStatus === 'waiting_for_information' ? liveStatus : null
+  const shown = held ?? detail?.run.status ?? status ?? 'running'
 
   useEffect(() => {
     notifyRunsChanged() // the task list shows where this run stands
@@ -44,6 +51,7 @@ export default function RunProgress({ runId, task, latest, onSnapshot }: Props) 
         <h3>{TASK_NAMES[task] ?? task}</h3>
         <StatusPill status={shown} />
       </div>
+      {live.data && <RunControls detail={live.data} onChanged={live.reload} />}
       <StepTrace steps={steps} />
 
       {detail && detail.run.status === 'failed' && (

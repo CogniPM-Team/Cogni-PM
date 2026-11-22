@@ -594,7 +594,33 @@ feat(frontend): add the activity log with filters and CSV export
 
 *Commit message:* `feat(auth): add login and roles so only a PM can approve`
 
-**Phase 7, part 1 of 3: oversight controls (not started).** Full task state machine (`waiting for information`, `paused`, `stopped`,
+**Phase 7, part 1 of 3: oversight controls (pause, stop, cancel and questions: done, branch `feature/run-controls`).**
+Mid-task mode change and revert were left out on purpose (Auto-Pilot does not exist yet; deleting created issues would
+break "agents can only create").
+
+| Control | What it does | What happens to drafts and Jira |
+|---|---|---|
+| **Pause** | Holds the run at the next step boundary. The step in flight finishes first. **Resume** carries on, and a pause can be taken back before it takes effect. | Nothing is touched. |
+| **Stop** | Ends the run at the next boundary. It cannot resume. | Whatever was already staged stays. Nothing is created in Jira. |
+| **Cancel** | Ends the run at the next boundary. | Its staged drafts are discarded (marked rejected, so the log shows they existed). Nothing already in Jira is touched. |
+| **Ask** | If the input is too vague to draft from, the agent returns no drafts and up to three questions, and the run waits (`waiting_for_information`). The PM answers and the **same run** carries on from its analysis step with the answer added to its instructions. It asks at most once. | Nothing is staged while it waits. A PM can also stop or cancel a waiting run. |
+
+- **How it works:** a request only sets `runs.control`; the running task looks at it between steps (`orchestrator/control.py`,
+  called from every graph node), so a model call or a Jira request that has started always finishes and nothing is left
+  half done. New statuses: `paused`, `waiting_for_information`, `stopped`, `cancelled` (migration `0008`).
+- **Who:** a PM only (the same rule as every other change). A developer sees what is happening and is offered nothing.
+- **Restart:** the state lives in memory, so after the API restarts a run that was running, paused or waiting is marked
+  failed, as before. Surviving a restart needs a LangGraph checkpoint store in Postgres (a new dependency); not done.
+- **In the website:** the run page and the console card show the controls, say what is pending ("Pausing after the
+  current step..."), and ask before a stop or cancel. A run that needs an answer appears in Home and Approvals as "Answer".
+- **Insights:** stopped and cancelled runs are *open* (never in a rate) and are shown on their own line, as agreed.
+  `phases.md`'s Insights definitions say the same.
+- **Audit:** `pause_run`, `resume_run`, `stop_run`, `cancel_run` and `answer_clarification` name the person (an answer
+  records how long it was, never what it said); `ask_clarification` names the agent.
+
+*Commit message:* `feat(orchestrator): add pause, stop, cancel and questions to a run`
+
+**Phase 7, part 1 of 3 (original plan):** Full task state machine (`waiting for information`, `paused`, `stopped`,
 `cancelled`) using LangGraph checkpoints; Pause / Stop / Cancel with the semantics in the requirements evaluation;
 clarification request cards in the console; mid-task mode change with a review of what to keep; revert where a
 change is reversible. Add login and roles (PM approves, developer views), which is required before anyone
@@ -797,7 +823,7 @@ Everything below can be worked out from data the system already stores. Nothing 
 
 | Number | Exactly how it is counted |
 |---|---|
-| **Runs decided** | Runs that are `applied` or `rejected`. Shown next to the number of open runs. |
+| **Runs decided** | Runs that are `applied` or `rejected`. Shown next to the number of open runs. A run a person **stopped or cancelled** is open, never decided, and is shown on its own line ("3 still open, 2 of them stopped or cancelled"). |
 | **Approval rate** | Approved runs ÷ decided runs. A run counts as approved if the reviewer created **at least one** draft from it, even if they left others out. |
 | **Rejection rate** | Rejected runs ÷ decided runs. This includes runs rejected because the reviewer chose **Regenerate** (try again); those are also counted separately under Reruns. Approval rate and rejection rate add up to 100%. |
 | **What happened to each draft** | Every draft in a decided run ends in exactly one of three states: **created as the agent wrote it**, **created after the reviewer edited it**, or **left out** (not ticked at approval, or part of a rejected run). The three always add up to the number of reviewed drafts. |

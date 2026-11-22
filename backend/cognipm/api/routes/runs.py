@@ -19,10 +19,12 @@ from cognipm.api import review
 from cognipm.api.deps import conn_factory, current_user, get_conn, get_jira, get_run_options
 from cognipm.api.launcher import StartFailed, start_task_run
 from cognipm.api.schemas import (
+    AnswerBody,
     ApplyProblem,
     ApproveBody,
     ApproveResult,
     ChangeEdit,
+    ControlResult,
     CreatedIssue,
     DraftOut,
     ParentStory,
@@ -44,6 +46,7 @@ from cognipm.db.connection import Connection
 from cognipm.gateway.apply import ApplyFailed, apply_staged_changes
 from cognipm.gateway.jira import InvalidIssueKey, JiraClient, validate_issue_key
 from cognipm.gateway.server import issue_approval_token
+from cognipm.orchestrator.control import LIVE, settle
 
 router = APIRouter(tags=["runs"])
 
@@ -181,12 +184,13 @@ def list_runs(conn: Connection = Depends(get_conn)) -> RunList:
     """The decision inbox: runs waiting on a human first (oldest first, so nothing sits forgotten), then the rest."""
     rows = conn.execute(f"SELECT {_RUN_COLUMNS} FROM runs r ORDER BY r.created_at DESC").fetchall()
     summaries = [RunSummary(**r) for r in rows]
+    needs_you = ("awaiting_review", "waiting_for_information")  # drafts to review, or a question to answer
     waiting = sorted(
-        (r for r in summaries if r.status == "awaiting_review"), key=lambda r: r.ready_at or r.created_at
+        (r for r in summaries if r.status in needs_you), key=lambda r: r.ready_at or r.created_at
     )
     return RunList(
         waiting=waiting,
-        past=[r for r in summaries if r.status != "awaiting_review"],
+        past=[r for r in summaries if r.status not in needs_you],
         awaiting_review_count=len(waiting),
     )
 
@@ -220,6 +224,10 @@ def show_run(
         editable=user.is_pm
         and run["status"] == "awaiting_review",  # a developer sees the drafts but cannot change them
         can_decide=user.is_pm and run["status"] in DECIDABLE and bool(pending),
+        control=run["control"] if run["status"] in LIVE else None,
+        question=run["question"] if run["status"] == "waiting_for_information" else None,
+        can_control=user.is_pm and run["status"] in LIVE,
+        can_answer=user.is_pm and run["status"] == "waiting_for_information",
         seconds_to_decision=(decided - ready).total_seconds() if decided and ready else None,
     )
 
@@ -248,7 +256,7 @@ async def run_events(
                 for row in rows:
                     position = row["id"]
                     yield f"id: {position}\nevent: step\ndata: {StepOut(**row).model_dump_json()}\n\n"
-                if status != "running" and not rows:
+                if status not in ("running", "paused") and not rows:  # a paused run is still live
                     yield f"event: end\ndata: {json.dumps({'status': status})}\n\n"
                     return
                 await asyncio.sleep(POLL_SECONDS)
@@ -524,3 +532,147 @@ async def rerun(
             detail=f"new run {new_id}: {body.note}",
         )
     return RerunResult(run_id=new_id, rerun_of=run_id)
+
+
+# ---------- pause, resume, stop, cancel, and answering the agent ----------
+# A request only sets `runs.control`; the running task does it between two steps (cognipm/orchestrator/control.py).
+# So the answer is "asked", and the run's own status changes a moment later. All of these are a PM's to do.
+
+
+def _asked(conn: Connection, run: dict, user: User, action: str, outcome: str = "requested") -> None:
+    log_audit(conn, run_id=run["id"], actor=user.actor, mode=run["mode"], action=action, outcome=outcome)
+
+
+def _set_control(conn: Connection, run_id: str, control: str | None) -> None:
+    conn.execute("UPDATE runs SET control = %s WHERE id = %s", (control, run_id))
+    conn.commit()
+
+
+def _result(conn: Connection, run_id: str) -> ControlResult:
+    row = conn.execute("SELECT status, control FROM runs WHERE id = %s", (run_id,)).fetchone()
+    return ControlResult(run_id=run_id, status=row["status"], control=row["control"])
+
+
+@router.post("/runs/{run_id}/pause", response_model=ControlResult)
+def pause_run(
+    run_id: str, conn: Connection = Depends(get_conn), user: User = Depends(current_user)
+) -> ControlResult:
+    """Hold a running run at its next step. The step in flight finishes first. Resume carries on."""
+    with _run_lock(conn, run_id):
+        run = _get_run(conn, run_id)
+        if run["status"] != "running" or run["control"]:
+            raise HTTPException(
+                status_code=409,
+                detail=f"this run is {run['status']}"
+                + (" and a request is already waiting to take effect" if run["control"] else "")
+                + "; only a running run can be paused",
+            )
+        _set_control(conn, run_id, "pause")
+        _asked(conn, run, user, "pause_run")
+    return _result(conn, run_id)
+
+
+@router.post("/runs/{run_id}/resume", response_model=ControlResult)
+def resume_run(
+    run_id: str, conn: Connection = Depends(get_conn), user: User = Depends(current_user)
+) -> ControlResult:
+    """Carry on a paused run, or take back a pause that has not taken effect yet."""
+    with _run_lock(conn, run_id):
+        run = _get_run(conn, run_id)
+        if not (run["status"] == "paused" or (run["status"] == "running" and run["control"] == "pause")):
+            raise HTTPException(
+                status_code=409, detail=f"this run is {run['status']}; only a paused run can be resumed"
+            )
+        _set_control(conn, run_id, None)
+        _asked(conn, run, user, "resume_run", "resumed")
+    return _result(conn, run_id)
+
+
+def _end_early(conn: Connection, run_id: str, user: User, how: str) -> ControlResult:
+    """Stop or cancel. A running or paused run ends at its next step; one waiting for an answer has no task running, so
+    it is ended here and now."""
+    action = "stop_run" if how == "stopped" else "cancel_run"
+    with _run_lock(conn, run_id):
+        run = _get_run(conn, run_id)
+        if run["status"] not in LIVE:
+            verb = "stopped" if how == "stopped" else "cancelled"
+            raise HTTPException(
+                status_code=409,
+                detail=f"this run is {run['status']}; only a running, paused or waiting run can be {verb}"
+                + ("" if run["status"] != "awaiting_review" else ". Reject it instead"),
+            )
+        if run["status"] == "waiting_for_information":
+            settle(conn, run_id, how)
+        else:
+            _set_control(conn, run_id, "stop" if how == "stopped" else "cancel")
+        _asked(conn, run, user, action)
+    return _result(conn, run_id)
+
+
+@router.post("/runs/{run_id}/stop", response_model=ControlResult)
+def stop_run(
+    run_id: str, conn: Connection = Depends(get_conn), user: User = Depends(current_user)
+) -> ControlResult:
+    """End a run early. What is already staged stays."""
+    return _end_early(conn, run_id, user, "stopped")
+
+
+@router.post("/runs/{run_id}/cancel", response_model=ControlResult)
+def cancel_run(
+    run_id: str, conn: Connection = Depends(get_conn), user: User = Depends(current_user)
+) -> ControlResult:
+    """End a run early and discard whatever it staged. Nothing already in Jira is touched."""
+    return _end_early(conn, run_id, user, "cancelled")
+
+
+@router.post("/runs/{run_id}/answer", response_model=ControlResult, status_code=202)
+async def answer_run(
+    run_id: str,
+    body: AnswerBody,
+    conn: Connection = Depends(get_conn),
+    jira: JiraClient = Depends(get_jira),
+    open_connection=Depends(conn_factory),
+    options: dict = Depends(get_run_options),
+    user: User = Depends(current_user),
+) -> ControlResult:
+    """Answer the agent's question. The same run carries on from its analysis step with the answer added to its
+    instructions, and it will not ask again: it drafts what it honestly can."""
+    with _run_lock(conn, run_id):
+        run = _get_run(conn, run_id)
+        if run["status"] != "waiting_for_information":
+            raise HTTPException(
+                status_code=409, detail=f"this run is {run['status']}; it is not waiting for an answer"
+            )
+        earlier = f"{run['instructions']}\n\n" if run["instructions"] else ""
+        instructions = f"{earlier}The agent asked: {run['question']}\nThe PM answered: {body.text}"
+        conn.execute(
+            "UPDATE runs SET status = 'running', question = NULL, instructions = %s WHERE id = %s",
+            (instructions, run_id),
+        )
+        conn.commit()
+        # Only how much was written, never what: an answer can quote project text (it is kept with the run's input).
+        log_audit(
+            conn,
+            run_id=run_id,
+            actor=user.actor,
+            mode=run["mode"],
+            action="answer_clarification",
+            outcome="answered",
+            detail=f"answered ({len(body.text)} characters)",
+        )
+    try:
+        await start_task_run(
+            open_connection=open_connection,
+            options=options["task"],
+            task=run["task_type"],
+            input_text=run["input_text"] or "",
+            story_key=run["story_key"],
+            context_jql=f"project = {jira.config.project_key} ORDER BY created DESC"
+            if run["task_type"] == "p1"
+            else None,
+            instructions=instructions,
+            resume_run_id=run_id,
+        )
+    except StartFailed as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return _result(conn, run_id)

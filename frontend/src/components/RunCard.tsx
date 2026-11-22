@@ -11,6 +11,7 @@ import { ModePill } from './Pills'
  */
 export default function RunCard({ run, retry = false, wide = false }: { run: RunSummary; retry?: boolean; wide?: boolean }) {
   const story = run.task_type === 'p2'
+  const asking = run.status === 'waiting_for_information'
   const overdue = run.ready_at !== null && waitingOverADay(run.ready_at)
   return (
     <article className={`run-card clickable mode-${run.mode}${wide ? ' wide' : ''}`}>
@@ -34,10 +35,17 @@ export default function RunCard({ run, retry = false, wide = false }: { run: Run
           <Icon name={story ? 'bookmark' : 'file'} size={16} />
           <span>{run.scope}</span>
         </li>
-        <li>
-          <Icon name="layers" size={16} />
-          <span>{plural(run.draft_count, 'draft')}</span>
-        </li>
+        {asking ? (
+          <li className="late">
+            <Icon name="info" size={16} />
+            <span>The agent has a question</span>
+          </li>
+        ) : (
+          <li>
+            <Icon name="layers" size={16} />
+            <span>{plural(run.draft_count, 'draft')}</span>
+          </li>
+        )}
         {run.ready_at && (
           <li className={overdue ? 'late' : undefined}>
             <Icon name="clock" size={16} />
@@ -52,7 +60,7 @@ export default function RunCard({ run, retry = false, wide = false }: { run: Run
         )}
       </ul>
       <Link className="button-link small with-icon stretch" to={`/approvals/${run.id}`}>
-        {retry ? 'Open to retry' : 'Review'}
+        {retry ? 'Open to retry' : asking ? 'Answer' : 'Review'}
         <Icon name="arrow" size={14} />
       </Link>
     </article>

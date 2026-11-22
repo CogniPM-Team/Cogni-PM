@@ -47,7 +47,8 @@ function Results({ n }: { n: InsightsData }) {
   return (
     <>
       <p className="insights-group">
-        {plural(n.runs_started, 'run')} started: {n.runs_decided} decided, {n.runs_open} still open.
+        {plural(n.runs_started, 'run')} started: {n.runs_decided} decided, {n.runs_open} still open
+        {n.runs_ended_early > 0 && ` (${n.runs_ended_early} of them stopped or cancelled)`}.
         {decided && n.runs_decided < TOO_FEW && <span className="tag overdue"> Too few to read yet</span>}
       </p>
 

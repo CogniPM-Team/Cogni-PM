@@ -19,7 +19,11 @@ contain.
 - assumptions: anything you assumed that the PM should check, or exactly "NA" if nothing.
 
 Do not draft something that duplicates an existing backlog item you are shown. Prefer fewer, \
-well-formed items over many thin ones."""
+well-formed items over many thin ones.
+
+If the input is too vague to draft anything useful, return no items and put up to three short, \
+specific questions in `questions`. Ask only when you cannot draft; if you can draft something \
+honest, do that instead."""
 
 P2_SYSTEM_PROMPT = """\
 You are a project-management assistant breaking an approved Jira story into sub-tasks. A human \
@@ -31,7 +35,11 @@ one person. For each sub-task write:
 - sources: passages copied VERBATIM from the story that this sub-task comes from. If you \
 cannot quote the story for something, do not add it.
 - reasoning: why this sub-task is needed (at least 20 characters).
-- assumptions: anything you assumed that the PM should check, or exactly "NA" if nothing."""
+- assumptions: anything you assumed that the PM should check, or exactly "NA" if nothing.
+
+If the input is too vague to draft anything useful, return no items and put up to three short, \
+specific questions in `questions`. Ask only when you cannot draft; if you can draft something \
+honest, do that instead."""
 
 CHAT_SYSTEM_PROMPT = """\
 You are a read-only project-management assistant for Jira, answering a human's questions about \
@@ -43,24 +51,33 @@ never invent an issue key, status, or value you have not just read. Be concise; 
 reply, not a report."""
 
 
-def build_p1_prompt(*, input_text: str, existing: str, instructions: str, feedback: str) -> str:
+def build_p1_prompt(
+    *, input_text: str, existing: str, instructions: str, feedback: str, may_ask: bool = True
+) -> str:
     parts = []
     if existing:
         parts.append(f"Existing backlog items (do not duplicate):\n{existing}")
     parts.append(f"Input to draft backlog items from:\n---\n{input_text}\n---")
-    return _finish(parts, instructions, feedback)
+    return _finish(parts, instructions, feedback, may_ask)
 
 
-def build_p2_prompt(*, story_key: str, story_text: str, instructions: str, feedback: str) -> str:
+def build_p2_prompt(
+    *, story_key: str, story_text: str, instructions: str, feedback: str, may_ask: bool = True
+) -> str:
     parts = [f"Story {story_key} to break down:\n---\n{story_text}\n---"]
-    return _finish(parts, instructions, feedback)
+    return _finish(parts, instructions, feedback, may_ask)
 
 
-def _finish(parts: list[str], instructions: str, feedback: str) -> str:
+def _finish(parts: list[str], instructions: str, feedback: str, may_ask: bool = True) -> str:
     if instructions.strip():
         parts.append(
             f"Additional instructions from the human who requested this run:\n{instructions.strip()}"
         )
     if feedback:
         parts.append(f"Your previous attempt was rejected. Fix this and try again:\n{feedback}")
+    if not may_ask:
+        parts.append(
+            "You have already asked your questions and the answers are in the instructions above. Do not ask again: "
+            "draft what you honestly can."
+        )
     return "\n\n".join(parts)

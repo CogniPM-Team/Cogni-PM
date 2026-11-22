@@ -28,6 +28,14 @@ def status_note(status: str, *, pending: int) -> str:
     has not is the part a first-time reviewer gets lost in, so say it every time."""
     if status == "running":
         return "The agent is still working. Nothing has been created in Jira."
+    if status == "paused":
+        return "Paused. Nothing has been created in Jira. Resume to carry on, or stop or cancel it."
+    if status == "waiting_for_information":
+        return "The agent needs an answer before it can draft. Nothing has been created in Jira."
+    if status == "stopped":
+        return "Stopped. Nothing from this run was created in Jira."
+    if status == "cancelled":
+        return "Cancelled. Its drafts were discarded and nothing was created in Jira."
     if status == "awaiting_review":
         return "Nothing has been created in Jira yet. Review the drafts, then approve the ones you want."
     if status == "failed":
