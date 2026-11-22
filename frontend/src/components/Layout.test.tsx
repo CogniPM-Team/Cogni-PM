@@ -34,6 +34,7 @@ describe('Layout', () => {
       'Home',
       'Agent console',
       'Approvals',
+      'Library',
       'Activity log',
     ])
     expect(within(nav).getByRole('group', { name: 'work' })).toBeInTheDocument()

@@ -27,6 +27,8 @@ export type Mode = Schemas['ModeOut']
 export type Story = Schemas['StoryOut']
 export type Project = Schemas['ProjectOut']
 export type StartRunBody = Schemas['StartRunBody']
+export type Artifact = Schemas['ArtifactOut']
+export type ArtifactList = Schemas['ArtifactList']
 export type Settings = Schemas['SettingsOut']
 export type ConnectionTest = Schemas['ConnectionTestOut']
 

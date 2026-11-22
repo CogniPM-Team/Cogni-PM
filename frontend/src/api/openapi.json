@@ -87,6 +87,110 @@
         "title": "ApproveResult",
         "type": "object"
       },
+      "ArtifactList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ArtifactOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "jira_reachable": {
+            "title": "Jira Reachable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "jira_reachable"
+        ],
+        "title": "ArtifactList",
+        "type": "object"
+      },
+      "ArtifactOut": {
+        "description": "An issue CogniPM created in Jira.",
+        "properties": {
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "issue_key": {
+            "title": "Issue Key",
+            "type": "string"
+          },
+          "issue_type": {
+            "title": "Issue Type",
+            "type": "string"
+          },
+          "jira_state": {
+            "description": "found: Jira lists it. missing: Jira was asked and it is gone. unknown: Jira could not tell us",
+            "enum": [
+              "found",
+              "missing",
+              "unknown"
+            ],
+            "title": "Jira State",
+            "type": "string"
+          },
+          "jira_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Its status in Jira now (To Do, Done...); only when found",
+            "title": "Jira Status"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issue_key",
+          "url",
+          "title",
+          "issue_type",
+          "run_id",
+          "approved_by",
+          "created_at",
+          "jira_state",
+          "jira_status"
+        ],
+        "title": "ArtifactOut",
+        "type": "object"
+      },
       "AuditPage": {
         "properties": {
           "filter": {
@@ -1486,6 +1590,28 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/artifacts": {
+      "get": {
+        "description": "The issues CogniPM created, newest first, each with its current status in Jira. Reads Jira; changes nothing.\n\nAn issue Jira does not list is `missing` (deleted, or its label removed) only when the search was complete;\notherwise, and whenever Jira cannot be reached, its state is `unknown`.",
+        "operationId": "list_artifacts_api_artifacts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtifactList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Artifacts",
+        "tags": [
+          "library"
+        ]
+      }
+    },
     "/api/audit": {
       "get": {
         "description": "Newest first. `changed_jira`: issues that were created. `needs_you`: activity on runs awaiting review.\n`rejected`: rejections, reruns, dropped drafts and anything a guardrail refused. `advice_only`: Co-Pilot chat.",

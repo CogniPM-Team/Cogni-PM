@@ -22,6 +22,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Home', path: '/home', section: 'WORK', enabled: true },
   { id: 'console', label: 'Agent console', path: '/console', section: 'WORK', enabled: true },
   { id: 'approvals', label: 'Approvals', path: '/approvals', section: 'WORK', enabled: true, badge: 'waiting' },
+  { id: 'library', label: 'Library', path: '/library', section: 'RECORD', enabled: true },
   { id: 'activity', label: 'Activity log', path: '/activity', section: 'RECORD', enabled: true },
   { id: 'settings', label: 'Settings', path: '/settings', section: 'SYSTEM', enabled: true },
 ]

@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from cognipm.api.launcher import fail_orphaned_runs
-from cognipm.api.routes import audit, chat, modes, runs, settings, stories
+from cognipm.api.routes import artifacts, audit, chat, modes, runs, settings, stories
 from cognipm.api.static import frontend_dist, mount_frontend
 from cognipm.config import cors_origins
 from cognipm.db.connection import get_connection
@@ -33,7 +33,15 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="CogniPM API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=cors_origins(), allow_methods=["*"], allow_headers=["*"])
 
-for router in (runs.router, chat.router, audit.router, modes.router, settings.router, stories.router):
+for router in (
+    runs.router,
+    chat.router,
+    audit.router,
+    artifacts.router,
+    modes.router,
+    settings.router,
+    stories.router,
+):
     app.include_router(router, prefix="/api")
 
 

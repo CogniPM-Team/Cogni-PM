@@ -255,6 +255,27 @@ class ProjectOut(BaseModel):
     jira_host: str
 
 
+class ArtifactOut(BaseModel):
+    """An issue CogniPM created in Jira."""
+
+    issue_key: str
+    url: str
+    title: str
+    issue_type: str
+    run_id: str
+    approved_by: str | None
+    created_at: datetime | None
+    jira_state: Literal["found", "missing", "unknown"] = Field(
+        description="found: Jira lists it. missing: Jira was asked and it is gone. unknown: Jira could not tell us"
+    )
+    jira_status: str | None = Field(description="Its status in Jira now (To Do, Done...); only when found")
+
+
+class ArtifactList(BaseModel):
+    items: list[ArtifactOut]
+    jira_reachable: bool
+
+
 class GuardrailOut(BaseModel):
     name: str = Field(description="The rule's id, as it appears in the activity log when it refuses a draft")
     description: str

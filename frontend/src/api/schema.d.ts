@@ -4,6 +4,29 @@
  */
 
 export interface paths {
+    "/api/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Artifacts
+         * @description The issues CogniPM created, newest first, each with its current status in Jira. Reads Jira; changes nothing.
+         *
+         *     An issue Jira does not list is `missing` (deleted, or its label removed) only when the search was complete;
+         *     otherwise, and whenever Jira cannot be reached, its state is `unknown`.
+         */
+        get: operations["list_artifacts_api_artifacts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audit": {
         parameters: {
             query?: never;
@@ -465,6 +488,44 @@ export interface components {
             run_id: string;
             /** Status */
             status: string;
+        };
+        /** ArtifactList */
+        ArtifactList: {
+            /** Items */
+            items: components["schemas"]["ArtifactOut"][];
+            /** Jira Reachable */
+            jira_reachable: boolean;
+        };
+        /**
+         * ArtifactOut
+         * @description An issue CogniPM created in Jira.
+         */
+        ArtifactOut: {
+            /** Approved By */
+            approved_by: string | null;
+            /** Created At */
+            created_at: string | null;
+            /** Issue Key */
+            issue_key: string;
+            /** Issue Type */
+            issue_type: string;
+            /**
+             * Jira State
+             * @description found: Jira lists it. missing: Jira was asked and it is gone. unknown: Jira could not tell us
+             * @enum {string}
+             */
+            jira_state: "found" | "missing" | "unknown";
+            /**
+             * Jira Status
+             * @description Its status in Jira now (To Do, Done...); only when found
+             */
+            jira_status: string | null;
+            /** Run Id */
+            run_id: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
         };
         /** AuditPage */
         AuditPage: {
@@ -980,6 +1041,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_artifacts_api_artifacts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactList"];
+                };
+            };
+        };
+    };
     audit_log_api_audit_get: {
         parameters: {
             query?: {

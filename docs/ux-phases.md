@@ -227,6 +227,12 @@ feat(activity): add run links, search, date range and a full CSV export
 
 ## U5. Library: Created issues
 
+**Status: done.** Differences from the plan: no tab bar yet, because one tab alone adds nothing (U6 adds Sources and
+the tabs with it); Library sits in the RECORD group, above Activity log. Jira's status comes from one search for the
+`cognipm-drafted` label, so an issue shows "Not found in Jira" only when that search was complete; past 200 labelled
+issues, or when Jira is down, the status is "Unknown" rather than a guess. The approver is read from the audit row
+written when the issue was created.
+
 **Goal:** one place to see everything CogniPM created in Jira, and what became of it.
 
 **Build, backend:** `GET /api/artifacts` returns our applied drafts (issue key, title, type, run, who approved, date)
