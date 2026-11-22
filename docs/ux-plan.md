@@ -201,7 +201,8 @@ recent runs) and a form to create a new one, plus the **Undo** controls.
 
 ## 6. What to build, and when
 
-The MVP deadline is the end of November.
+The detailed phases (U0 to U10), with tasks, tests and "done when" for each, are in
+[ux-phases.md](ux-phases.md). This is the summary. The MVP deadline is the end of November.
 
 | When | What | Time | Why |
 |---|---|---|---|

@@ -738,6 +738,9 @@ freeze features before FIT4702 starts.
 
 ---
 
+UI work has its own plan: [ux-plan.md](ux-plan.md) says what pages to add and why, and [ux-phases.md](ux-phases.md)
+breaks it into phases U0 to U10 on the branch `feature/uiux-improvement`.
+
 ## Hardening and gaps
 
 What a real practitioner would hit that the phases above do not yet cover, from a review on 16 Nov. Each item
