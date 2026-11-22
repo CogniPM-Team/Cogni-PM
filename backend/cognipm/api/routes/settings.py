@@ -17,9 +17,11 @@ from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types as genai_types
 
-from cognipm.api.deps import get_jira, get_model_client
-from cognipm.api.schemas import ConnectionTestOut, GuardrailOut, SettingsOut
-from cognipm.config import max_items_per_run, orchestrator_model
+from cognipm.api.deps import get_conn, get_jira, get_model_client
+from cognipm.api.schemas import ConnectionTestOut, Deleted, GuardrailOut, SettingsOut
+from cognipm.config import HUMAN_ACTOR, max_items_per_run, orchestrator_model
+from cognipm.db.audit import log_audit
+from cognipm.db.connection import Connection
 from cognipm.gateway.guardrails import GUARDRAILS
 from cognipm.gateway.jira import JiraClient, describe_error
 
@@ -107,6 +109,29 @@ def test_jira(jira: JiraClient = Depends(get_jira)) -> ConnectionTestOut:
             ok=False, problem=f"Signed in as {who}, but the project request did not get through."
         )
     return ConnectionTestOut(ok=True, detail=f"Signed in as {who}. Project {project} is reachable.")
+
+
+@router.post("/settings/clear-run-inputs", response_model=Deleted)
+def clear_run_inputs(conn: Connection = Depends(get_conn)) -> Deleted:
+    """Erase the saved input text and instructions of runs that are decided (approved or rejected). The drafts,
+    decisions and audit log stay. A run still working, waiting for review, or failed (it can be approved again or
+    repeated) keeps its input: the review screen and a rerun need it."""
+    cleared = conn.execute(
+        "WITH cleared AS (UPDATE runs SET input_text = NULL, instructions = NULL "
+        "WHERE status IN ('applied', 'rejected') AND (input_text IS NOT NULL OR instructions IS NOT NULL) "
+        "RETURNING 1) SELECT COUNT(*) AS n FROM cleared"
+    ).fetchone()["n"]
+    conn.commit()
+    log_audit(
+        conn,
+        run_id=None,
+        actor=HUMAN_ACTOR,
+        mode=None,
+        action="clear_run_inputs",
+        outcome="ok",
+        detail=f"erased the saved input of {cleared} decided run(s)",
+    )
+    return Deleted(deleted=cleared)
 
 
 def describe_model_error(exc: Exception) -> str:

@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from cognipm.api.launcher import fail_orphaned_runs
-from cognipm.api.routes import artifacts, audit, chat, modes, runs, settings, stories
+from cognipm.api.routes import artifacts, audit, chat, documents, modes, runs, settings, stories
 from cognipm.api.static import frontend_dist, mount_frontend
 from cognipm.config import cors_origins
 from cognipm.db.connection import get_connection
@@ -38,6 +38,7 @@ for router in (
     chat.router,
     audit.router,
     artifacts.router,
+    documents.router,
     modes.router,
     settings.router,
     stories.router,

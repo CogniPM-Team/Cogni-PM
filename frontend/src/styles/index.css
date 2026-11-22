@@ -394,3 +394,12 @@ button.primary .spinner { border-color: rgba(255, 255, 255, 0.35); border-top-co
 .filters { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .filters label { display: flex; align-items: center; gap: 6px; }
 input[type='date'] { font: inherit; padding: 7px 10px; border: 1px solid var(--control); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
+
+/* ---------- Sources ---------- */
+.doc-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.doc-form textarea { min-height: 8rem; }
+.doc-text { max-height: 18rem; overflow: auto; margin: 0; padding: 12px; background: var(--surface-soft); border-radius: var(--radius-sm); white-space: pre-wrap; font: inherit; }
+.doc-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.inline-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.erase { margin: 8px 0; }
+.erase .meta, .erase .error { margin: 6px 0 0; }

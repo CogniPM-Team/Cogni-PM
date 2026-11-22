@@ -24,6 +24,43 @@ class StartRunBody(BaseModel):
         default=None, description="p2: the existing story to break down, e.g. MCP-4"
     )
     instructions: str = Field(default="", max_length=4000, description="Extra guidance for the agent")
+    document_id: str | None = Field(
+        default=None, description="p1: the saved document the text came from, so it can say where it was used"
+    )
+
+
+DocumentKind = Literal["notes", "requirements", "other"]
+MAX_DOCUMENT_CHARS = 200_000  # the same limit a run's input has
+
+
+class DocumentIn(BaseModel):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    kind: DocumentKind = "notes"
+    text: str = Field(min_length=1, max_length=MAX_DOCUMENT_CHARS)
+    filename: str | None = Field(default=None, max_length=255)
+
+
+class DocumentRename(BaseModel):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+
+
+class DocumentSummary(BaseModel):
+    id: str
+    title: str
+    kind: DocumentKind
+    filename: str | None
+    char_count: int
+    created_at: datetime
+    updated_at: datetime
+    used_in_runs: int = Field(description="Runs that were started from this document")
+
+
+class DocumentOut(DocumentSummary):
+    text: str
+
+
+class Deleted(BaseModel):
+    deleted: int
 
 
 class ChangeEdit(BaseModel):

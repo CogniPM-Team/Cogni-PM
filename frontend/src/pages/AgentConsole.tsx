@@ -70,7 +70,10 @@ export default function AgentConsole() {
         <div className="mode-pane console-body" hidden={mode !== 'M2'}>
           <div className="task-layout">
             <div className="task-col">
-              <TaskStarter initialTask={params.get('task') === 'p2' ? 'p2' : 'p1'} onStarted={(id, task) => setRuns((r) => [{ id, task }, ...r])} />
+              <TaskStarter
+                initialTask={params.get('task') === 'p2' ? 'p2' : 'p1'}
+                initialDocumentId={params.get('document')}
+                onStarted={(id, task) => setRuns((r) => [{ id, task }, ...r])} />
             </div>
             <div className="task-col">
               {runs.length === 0 ? (

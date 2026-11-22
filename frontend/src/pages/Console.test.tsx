@@ -161,4 +161,81 @@ describe('Agent console', () => {
     expect(screen.getByRole('button', { name: /Break down a story/ })).toHaveAttribute('aria-pressed', 'true')
     expect(await screen.findByRole('radio', { name: /MCP-4/ })).toBeInTheDocument()
   })
+  const SAVED = { id: 'd1', title: 'Sprint notes', kind: 'notes', filename: null, char_count: 20, created_at: '2026-11-20T08:00:00Z', updated_at: '2026-11-20T08:00:00Z', used_in_runs: 0 }
+
+  it('fills the form from a document chosen in the library, and sends which one it came from', async () => {
+    const calls = mockApi({
+      'GET /api/documents': [SAVED],
+      'GET /api/documents/d1': { ...SAVED, text: 'Payroll moves to Q3.' },
+      'POST /api/runs': jsonResponse({ run_id: 'run-9' }, 202),
+      'GET /api/runs/run-9': runDetail('run-9', { drafts: [] }),
+    })
+    const user = userEvent.setup()
+    renderConsole()
+
+    await user.click(screen.getByRole('button', { name: /Super-Pilot/ }))
+    await user.selectOptions(await screen.findByLabelText('Choose from your library'), 'd1')
+    expect(await screen.findByDisplayValue('Payroll moves to Q3.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Start the task' }))
+
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({ task: 'p1', input_text: 'Payroll moves to Q3.', document_id: 'd1' }),
+    )
+  })
+
+  it('opens on the document named in the address, from the Library button', async () => {
+    mockApi({ 'GET /api/documents': [SAVED], 'GET /api/documents/d1': { ...SAVED, text: 'Payroll moves to Q3.' } })
+    render(
+      <MemoryRouter initialEntries={['/console?mode=M2&document=d1']}>
+        <AgentConsole />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByDisplayValue('Payroll moves to Q3.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Choose from your library')).toHaveValue('d1')
+  })
+
+  it('saves pasted text as a document, and then links the run to it', async () => {
+    const calls = mockApi({
+      'GET /api/documents': [],
+      'POST /api/documents': { ...SAVED, text: 'Payroll moves to Q3.' },
+      'POST /api/runs': jsonResponse({ run_id: 'run-9' }, 202),
+      'GET /api/runs/run-9': runDetail('run-9', { drafts: [] }),
+    })
+    const user = userEvent.setup()
+    renderConsole()
+
+    await user.click(screen.getByRole('button', { name: /Super-Pilot/ }))
+    expect(screen.queryByRole('button', { name: 'Save as document' })).not.toBeInTheDocument() // nothing to save yet
+    await user.type(screen.getByRole('textbox', { name: /Requirements or meeting notes/ }), 'Payroll moves to Q3.')
+    await user.click(screen.getByRole('button', { name: 'Save as document' }))
+    await user.type(screen.getByLabelText('Document title'), 'Sprint notes')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('Saved to your library as Sprint notes.')).toBeInTheDocument()
+    expect(calls.find((c) => c.path === '/api/documents' && c.method === 'POST')?.body).toEqual({ title: 'Sprint notes', text: 'Payroll moves to Q3.' })
+
+    await user.click(screen.getByRole('button', { name: 'Start the task' }))
+    await waitFor(() => expect(calls.find((c) => c.path === '/api/runs' && c.method === 'POST')?.body).toMatchObject({ document_id: 'd1' }))
+  })
+
+  it('forgets the link to a document when its text is cleared', async () => {
+    const calls = mockApi({
+      'GET /api/documents': [SAVED],
+      'GET /api/documents/d1': { ...SAVED, text: 'Q3' },
+      'POST /api/runs': jsonResponse({ run_id: 'run-9' }, 202),
+      'GET /api/runs/run-9': runDetail('run-9', { drafts: [] }),
+    })
+    const user = userEvent.setup()
+    renderConsole()
+
+    await user.click(screen.getByRole('button', { name: /Super-Pilot/ }))
+    await user.selectOptions(await screen.findByLabelText('Choose from your library'), 'd1')
+    const notes = screen.getByRole('textbox', { name: /Requirements or meeting notes/ })
+    await user.clear(notes)
+    await user.type(notes, 'Something else entirely')
+    await user.click(screen.getByRole('button', { name: 'Start the task' }))
+
+    await waitFor(() => expect(calls.find((c) => c.path === '/api/runs' && c.method === 'POST')?.body).toMatchObject({ document_id: null }))
+  })
 })

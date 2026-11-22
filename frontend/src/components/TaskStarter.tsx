@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api/client'
-import type { StartedRun, StartRunBody, Story } from '../api/types'
+import type { DocumentSummary, SavedDocument, StartedRun, StartRunBody, Story } from '../api/types'
 import { useFetch } from '../api/useFetch'
 import { notifyRunsChanged } from '../lib/chatEvents'
 import Spinner from './Spinner'
@@ -12,11 +12,13 @@ export type Task = 'p1' | 'p2'
 interface Props {
   /** Which task is selected when the form first appears (Home's "Break down a story" button sets it). */
   initialTask?: Task
+  /** A saved document to start from (Library's "Draft a backlog from this" sets it): its text fills the form. */
+  initialDocumentId?: string | null
   onStarted: (runId: string, task: Task) => void
 }
 
 /** The Super-Pilot (M2): hand the agent a task. It drafts; nothing is created in Jira until you approve. */
-export default function TaskStarter({ initialTask = 'p1', onStarted }: Props) {
+export default function TaskStarter({ initialTask = 'p1', initialDocumentId = null, onStarted }: Props) {
   const [task, setTask] = useState<Task>(initialTask)
   const [text, setText] = useState('')
   const [instructions, setInstructions] = useState('')
@@ -24,6 +26,44 @@ export default function TaskStarter({ initialTask = 'p1', onStarted }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const stories = useFetch<Story[]>(task === 'p2' ? '/api/stories' : null)
+  const documents = useFetch<DocumentSummary[]>(task === 'p1' ? '/api/documents' : null)
+  const [documentId, setDocumentId] = useState<string | null>(null) // the saved document the text came from
+  const [saving, setSaving] = useState<{ title: string } | null>(null)
+  const [saved, setSaved] = useState<string | null>(null)
+
+  async function loadDocument(id: string) {
+    try {
+      const doc = await api.get<SavedDocument>(`/api/documents/${id}`)
+      setText(doc.text)
+      setDocumentId(doc.id)
+      setSaved(null)
+      setError(null)
+    } catch (e) {
+      setError(`Could not open that document: ${(e as Error).message}`)
+    }
+  }
+
+  // Arriving from the Library: fill the form from the chosen document, once it has loaded.
+  const initial = useFetch<SavedDocument>(initialDocumentId ? `/api/documents/${initialDocumentId}` : null)
+  const [appliedInitial, setAppliedInitial] = useState<string | null>(null)
+  if (initial.data && appliedInitial !== initial.data.id) {
+    setAppliedInitial(initial.data.id)
+    setText(initial.data.text)
+    setDocumentId(initial.data.id)
+  }
+
+  async function saveAsDocument() {
+    if (!saving) return
+    try {
+      const doc = await api.post<SavedDocument>('/api/documents', { title: saving.title, text })
+      setDocumentId(doc.id)
+      setSaved(doc.title)
+      setSaving(null)
+      documents.reload()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
 
   const ready = task === 'p1' ? text.trim().length > 0 && text.length <= MAX_INPUT : storyKey !== null
 
@@ -41,7 +81,7 @@ export default function TaskStarter({ initialTask = 'p1', onStarted }: Props) {
   async function start() {
     const body: StartRunBody =
       task === 'p1'
-        ? { task, input_text: text, instructions }
+        ? { task, input_text: text, instructions, document_id: documentId }
         : { task, story_key: storyKey, instructions }
     setBusy(true)
     setError(null)
@@ -52,6 +92,8 @@ export default function TaskStarter({ initialTask = 'p1', onStarted }: Props) {
       setText('')
       setInstructions('')
       setStoryKey(null)
+      setDocumentId(null)
+      setSaved(null)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -87,11 +129,31 @@ export default function TaskStarter({ initialTask = 'p1', onStarted }: Props) {
       >
         {task === 'p1' ? (
           <>
+            {documents.data && documents.data.length > 0 && (
+              <label className="field">
+                <span>Choose from your library</span>
+                <select
+                  value={documentId ?? ''}
+                  onChange={(e) => (e.target.value ? void loadDocument(e.target.value) : setDocumentId(null))}
+                >
+                  <option value="">Pasted text</option>
+                  {documents.data.map((doc) => (
+                    <option key={doc.id} value={doc.id}>
+                      {doc.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="field grow">
               <span>Requirements or meeting notes</span>
               <textarea
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                  setText(e.target.value)
+                  if (e.target.value === '') setDocumentId(null)
+                  setSaved(null)
+                }}
                 placeholder="Paste the text here. Use anonymised or synthetic text if the project is sensitive: it is sent to the AI model."
               />
             </label>
@@ -99,6 +161,35 @@ export default function TaskStarter({ initialTask = 'p1', onStarted }: Props) {
               <span>Or load a text file</span>
               <input type="file" accept=".txt,.md,text/plain,text/markdown" onChange={(e) => void load(e.target.files?.[0])} />
             </label>
+            {saved ? (
+              <p className="meta" role="status">
+                Saved to your library as {saved}.
+              </p>
+            ) : saving ? (
+              <div className="inline-form">
+                <input
+                  type="text"
+                  aria-label="Document title"
+                  placeholder="Title"
+                  value={saving.title}
+                  maxLength={200}
+                  onChange={(e) => setSaving({ title: e.target.value })}
+                />
+                <button type="button" className="small primary" disabled={!saving.title.trim()} onClick={() => void saveAsDocument()}>
+                  Save
+                </button>
+                <button type="button" className="small" onClick={() => setSaving(null)}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              documentId === null &&
+              text.trim() !== '' && (
+                <button type="button" className="small" onClick={() => setSaving({ title: '' })}>
+                  Save as document
+                </button>
+              )
+            )}
           </>
         ) : (
           <fieldset className="fieldset grow">
@@ -129,6 +220,7 @@ export default function TaskStarter({ initialTask = 'p1', onStarted }: Props) {
           <input type="text" value={instructions} onChange={(e) => setInstructions(e.target.value)} maxLength={4000} />
         </label>
 
+        {initial.error && <p className="error">Could not open that saved document: {initial.error.message}</p>}
         {error && <p className="error">{error}</p>}
         <button type="submit" className="primary" disabled={!ready || busy}>
           {busy && <Spinner />}

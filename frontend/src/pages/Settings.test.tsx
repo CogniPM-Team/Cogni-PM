@@ -139,4 +139,46 @@ describe('Settings', () => {
     expect(await screen.findByText('Could not load the settings')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
+  it('asks before deleting saved documents, then says how many were deleted', async () => {
+    const calls = api({ 'DELETE /api/documents': { deleted: 3 } })
+    const user = userEvent.setup()
+    renderSettings()
+
+    await user.click(await screen.findByRole('button', { name: 'Delete all saved documents' }))
+    const ask = screen.getByRole('alertdialog')
+    expect(ask).toHaveTextContent('Runs keep their own copy')
+    expect(calls.some((c) => c.method === 'DELETE')).toBe(false)
+
+    await user.click(within(ask).getByRole('button', { name: 'Yes, delete' }))
+
+    expect(await screen.findByText('Deleted 3 documents.')).toBeInTheDocument()
+    expect(calls.filter((c) => c.method === 'DELETE')).toHaveLength(1)
+  })
+
+  it('warns what erasing past inputs costs, and can be cancelled', async () => {
+    const calls = api({ 'POST /api/settings/clear-run-inputs': { deleted: 1 } })
+    const user = userEvent.setup()
+    renderSettings()
+
+    await user.click(await screen.findByRole('button', { name: 'Erase the saved input of past runs' }))
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('activity log stay')
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
+    expect(calls.some((c) => c.method === 'POST')).toBe(false)
+
+    await user.click(screen.getByRole('button', { name: 'Erase the saved input of past runs' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Yes, delete' }))
+
+    expect(await screen.findByText('Erased the saved input of 1 run.')).toBeInTheDocument()
+  })
+
+  it('shows the reason when erasing fails', async () => {
+    api({ 'DELETE /api/documents': jsonResponse({ detail: 'database is busy' }, 500) })
+    const user = userEvent.setup()
+    renderSettings()
+
+    await user.click(await screen.findByRole('button', { name: 'Delete all saved documents' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Yes, delete' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('database is busy')
+  })
 })

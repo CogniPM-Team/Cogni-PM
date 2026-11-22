@@ -137,8 +137,14 @@ async def start_run(
     jira: JiraClient = Depends(get_jira),
     open_connection=Depends(conn_factory),
     options: dict = Depends(get_run_options),
+    conn: Connection = Depends(get_conn),
 ) -> StartedRun:
     """Start a run in M2. Returns as soon as the run exists; follow it through /runs/{id}/events."""
+    if (
+        body.document_id is not None
+        and not conn.execute("SELECT 1 FROM documents WHERE id = %s", (body.document_id,)).fetchone()
+    ):
+        raise HTTPException(status_code=422, detail="that saved document no longer exists")
     if body.task == "p1" and not (body.input_text or "").strip():
         raise HTTPException(
             status_code=422, detail="p1 needs input_text: the notes or requirements to draft from"
@@ -164,6 +170,9 @@ async def start_run(
         )
     except StartFailed as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if body.document_id is not None:
+        conn.execute("UPDATE runs SET document_id = %s WHERE id = %s", (body.document_id, run_id))
+        conn.commit()
     return StartedRun(run_id=run_id)
 
 

@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import type { Artifact, ArtifactList } from '../api/types'
 import { useFetch } from '../api/useFetch'
-import { EmptyState, ErrorState, PageHeader } from '../components/PageParts'
+import { EmptyState, ErrorState, PageHeader, Tabs } from '../components/PageParts'
+import SourcesTab from '../components/SourcesTab'
 import { actorLabel, ago, formatTime } from '../lib/format'
+import { tabPanelProps } from '../lib/tabs'
 
 const MISSING = 'Not found in Jira'
 const UNKNOWN = 'Unknown'
@@ -16,7 +18,7 @@ function statusOf(item: Artifact): string {
 
 const unique = (values: string[]) => [...new Set(values)].sort()
 
-export default function Library() {
+function CreatedIssues() {
   const { data, error, loading, reload } = useFetch<ArtifactList>('/api/artifacts')
   const [status, setStatus] = useState('')
   const [type, setType] = useState('')
@@ -33,8 +35,6 @@ export default function Library() {
 
   return (
     <>
-      <PageHeader description="Every issue CogniPM has created in Jira, with its status in Jira right now." />
-
       {!data.jira_reachable && (
         <p className="notice warning" role="status">
           Jira could not be reached, so current statuses are unknown. Your own record below is still complete.
@@ -155,6 +155,37 @@ export default function Library() {
           )}
         </>
       )}
+    </>
+  )
+}
+
+type LibraryTab = 'created' | 'sources'
+
+export default function Library() {
+  // The tab is in the address (?tab=sources), so it survives a refresh and Settings or Home can link straight to it.
+  const [params, setParams] = useSearchParams()
+  const tab: LibraryTab = params.get('tab') === 'sources' ? 'sources' : 'created'
+
+  return (
+    <>
+      <PageHeader
+        description={
+          tab === 'sources'
+            ? 'The notes and requirements you saved to draft from.'
+            : 'Every issue CogniPM has created in Jira, with its status in Jira right now.'
+        }
+      />
+      <Tabs
+        label="Library"
+        prefix="library"
+        value={tab}
+        onChange={(id) => setParams(id === 'sources' ? { tab: 'sources' } : {}, { replace: true })}
+        tabs={[
+          { id: 'created', label: 'Created issues' },
+          { id: 'sources', label: 'Sources' },
+        ]}
+      />
+      <div {...tabPanelProps(tab, 'library')}>{tab === 'sources' ? <SourcesTab /> : <CreatedIssues />}</div>
     </>
   )
 }

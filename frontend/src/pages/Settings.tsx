@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api/client'
-import type { ConnectionTest, Mode, Settings as SettingsData } from '../api/types'
+import type { ConnectionTest, Deleted, Mode, Settings as SettingsData } from '../api/types'
 import { useFetch } from '../api/useFetch'
 import { ErrorState, PageHeader } from '../components/PageParts'
 import Spinner from '../components/Spinner'
@@ -74,6 +74,57 @@ function Connection({
           </p>
         )}
       </div>
+    </div>
+  )
+}
+
+/** A destructive button that asks once, says what it did, and says what it leaves alone. */
+function EraseButton({
+  label,
+  warning,
+  run,
+  done,
+}: {
+  label: string
+  warning: string
+  run: () => Promise<Deleted>
+  done: (count: number) => string
+}) {
+  const [step, setStep] = useState<'idle' | 'asking' | 'working'>('idle')
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null)
+
+  async function erase() {
+    setStep('working')
+    try {
+      setResult({ ok: true, text: done((await run()).deleted) })
+    } catch (e) {
+      setResult({ ok: false, text: (e as Error).message })
+    }
+    setStep('idle')
+  }
+
+  return (
+    <div className="erase">
+      {step === 'idle' ? (
+        <button type="button" onClick={() => setStep('asking')}>
+          {label}
+        </button>
+      ) : (
+        <div className="confirm" role="alertdialog" aria-label={label}>
+          <span>{warning}</span>
+          <button type="button" className="primary small" disabled={step === 'working'} onClick={() => void erase()}>
+            {step === 'working' ? 'Deleting...' : 'Yes, delete'}
+          </button>
+          <button type="button" className="small" disabled={step === 'working'} onClick={() => setStep('idle')}>
+            Cancel
+          </button>
+        </div>
+      )}
+      {result && (
+        <p className={result.ok ? 'meta' : 'error'} role={result.ok ? 'status' : 'alert'}>
+          {result.text}
+        </p>
+      )}
     </div>
   )
 }
@@ -158,6 +209,19 @@ export default function Settings() {
           Inputs, chats, drafts and the activity log are kept in this install&apos;s own database. The activity log cannot be
           changed or deleted.
         </p>
+        <h3>Delete my stored inputs</h3>
+        <EraseButton
+          label="Delete all saved documents"
+          warning="This removes the text of every document in your library for good. Runs keep their own copy."
+          run={() => api.delete<Deleted>('/api/documents')}
+          done={(n) => `Deleted ${plural(n, 'document')}.`}
+        />
+        <EraseButton
+          label="Erase the saved input of past runs"
+          warning="This erases the pasted notes and instructions of runs you already approved or rejected. Their drafts and the activity log stay, but you will no longer see the original text beside the drafts."
+          run={() => api.post<Deleted>('/api/settings/clear-run-inputs')}
+          done={(n) => `Erased the saved input of ${plural(n, 'run')}.`}
+        />
       </section>
 
       <section className="card settings-section" aria-labelledby="set-about">

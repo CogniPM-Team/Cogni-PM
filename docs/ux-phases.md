@@ -256,6 +256,13 @@ feat(library): list the issues CogniPM created, with their current status in Jir
 
 ## U6. Library: Sources
 
+**Status: done.** Decision on the open question: **deleting a document removes its text, and runs made from it keep
+their own copy** (they already hold it in `runs.input_text`), so review screens, reruns and the audit trail keep
+working. If the team prefers the privacy-first option, the Settings button "Erase the saved input of past runs" removes
+those copies too (it only touches approved or rejected runs). Only `.txt` and `.md` files are supported; PDF and Word
+need a text-extraction library and are not included. The audit log records saving, renaming and deleting a document by
+title, never its text.
+
 **Goal:** make input documents reusable and deletable.
 
 **Build, backend:** a `documents` table (title, kind, text, filename, date), `GET/POST/DELETE /api/documents`, and a link

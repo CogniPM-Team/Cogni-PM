@@ -100,6 +100,11 @@ const ACTIONS: Record<string, string> = {
   commit_changes: 'Committed changes',
   chat_turn: 'Answered a question',
   delete_chat: 'Deleted a chat',
+  save_document: 'Saved a document',
+  rename_document: 'Renamed a document',
+  delete_document: 'Deleted a document',
+  delete_documents: 'Deleted all saved documents',
+  clear_run_inputs: 'Erased the saved input of decided runs',
   provenance_comment: 'Added a comment in Jira',
 }
 
