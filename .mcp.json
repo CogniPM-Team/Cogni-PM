@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "cognipm-m1": {
+      "command": "python",
+      "args": ["-m", "cognipm.gateway.server"],
+      "env": { "COGNIPM_MODE": "M1", "COGNIPM_AGENT": "claude-code" }
+    },
+    "cognipm-m2": {
+      "command": "python",
+      "args": ["-m", "cognipm.gateway.server"],
+      "env": { "COGNIPM_MODE": "M2", "COGNIPM_AGENT": "claude-code" }
+    },
+    "cognipm-m3": {
+      "command": "python",
+      "args": ["-m", "cognipm.gateway.server"],
+      "env": { "COGNIPM_MODE": "M3", "COGNIPM_AGENT": "claude-code" }
+    }
+  }
+}

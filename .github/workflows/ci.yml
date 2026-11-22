@@ -21,27 +21,19 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
-      # Guard: frontend/ is empty for now, so skip. Delete this step and every `if:` below
-      # once frontend/package.json exists, so a broken frontend can't pass silently.
-      - id: chk
-        working-directory: .
-        run: echo "present=$([ -f frontend/package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - if: steps.chk.outputs.present == 'true'
-        uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24 # jsdom needs Node 22.22+ or 24.15+
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - if: steps.chk.outputs.present == 'true'
-        run: npm ci
-      - if: steps.chk.outputs.present == 'true'
-        run: npm run lint
-      - if: steps.chk.outputs.present == 'true'
-        run: npx tsc --noEmit
-      - if: steps.chk.outputs.present == 'true'
-        run: npm test --if-present
-      - if: steps.chk.outputs.present == 'true'
-        run: npm run build
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      # The API types are generated from frontend/src/api/openapi.json; a stale file would hide a mismatch.
+      - run: npm run gen:api
+      - run: git diff --exit-code -- src/api/schema.d.ts
+      - run: npm test
+      - run: npm run build
 
   backend:
     runs-on: ubuntu-latest
@@ -49,6 +41,24 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    # The database tests run against a real Postgres (same image as local Docker), never a mock.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: cognipm
+          POSTGRES_PASSWORD: cognipm
+          POSTGRES_DB: cognipm_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cognipm"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://cognipm:cognipm@localhost:5432/cognipm_test
+      REQUIRE_DB: "1" # no database = a failure, never a silent skip
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -60,14 +70,23 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
-      # When a test needs PostgreSQL, add `services: postgres: image: pgvector/pgvector:pg16`
-      # to this job (with a health check) and set DATABASE_URL.
+
+  # The image must keep building: it is how teammates run the product. Builds only; nothing is pushed.
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t cognipm-app .
+      - name: The image must not contain secrets or a .env file
+        run: |
+          docker run --rm --entrypoint sh cognipm-app -c 'test ! -f /app/.env'
 
   # Single stable check name for the branch ruleset to require, so the ruleset
   # never has to change when jobs above are added, renamed, or skipped.
   ci:
     if: always()
-    needs: [frontend, backend]
+    needs: [frontend, backend, docker]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any job failed or was cancelled
