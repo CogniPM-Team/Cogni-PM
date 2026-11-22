@@ -14,7 +14,7 @@ export default function Layout() {
   return (
     <div className="app">
       <aside className="sidebar">
-        <Link className="project" to="/console" aria-label="CogniPM home">
+        <Link className="project" to="/home" aria-label="CogniPM home">
           <span className="project-card">
             <img src="/cognipm-wordmark.png" alt="CogniPM" />
             <span className="project-sub">Jira · {project?.key ?? 'not connected'}</span>

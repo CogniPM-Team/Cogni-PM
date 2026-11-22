@@ -103,6 +103,9 @@ refactor(frontend): drive the sidebar from one config and add shared page pieces
 
 ## U1. Home
 
+**Status: done.** Home is the first page and `/` opens it. The "Recently" times show the exact date and time when you
+hover over them.
+
 **Goal:** a starting point that answers "what needs me, and what can I do next?".
 
 **Build (frontend only; the data already exists):**

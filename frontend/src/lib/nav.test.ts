@@ -37,12 +37,8 @@ describe('the sidebar config', () => {
     expect(enabled.every((i) => i.path.startsWith('/'))).toBe(true)
   })
 
-  it('keeps Home out of the sidebar until it exists', () => {
-    expect(
-      visibleNav()
-        .flatMap((g) => g.items)
-        .map((i) => i.id),
-    ).not.toContain('home')
+  it('puts Home first in the sidebar', () => {
+    expect(visibleNav()[0].items[0].id).toBe('home')
   })
 })
 
@@ -55,7 +51,8 @@ describe('pageInfo', () => {
   })
 
   it('does not name a page that is switched off, and falls back to the product name', () => {
-    expect(pageInfo('/home').title).toBe('CogniPM')
+    expect(pageInfo('/home').title).toBe('Home')
+    expect(pageInfo('/later', [item({ path: '/later', label: 'Later', enabled: false })]).title).toBe('CogniPM')
     expect(pageInfo('/nowhere').title).toBe('CogniPM')
     expect(pageInfo('/consolex').title).toBe('CogniPM') // a different word, not a page under /console
   })

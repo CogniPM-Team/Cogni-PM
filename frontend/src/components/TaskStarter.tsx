@@ -10,12 +10,14 @@ const MAX_INPUT = 200_000 // the API's limit
 export type Task = 'p1' | 'p2'
 
 interface Props {
+  /** Which task is selected when the form first appears (Home's "Break down a story" button sets it). */
+  initialTask?: Task
   onStarted: (runId: string, task: Task) => void
 }
 
 /** The Super-Pilot (M2): hand the agent a task. It drafts; nothing is created in Jira until you approve. */
-export default function TaskStarter({ onStarted }: Props) {
-  const [task, setTask] = useState<Task>('p1')
+export default function TaskStarter({ initialTask = 'p1', onStarted }: Props) {
+  const [task, setTask] = useState<Task>(initialTask)
   const [text, setText] = useState('')
   const [instructions, setInstructions] = useState('')
   const [storyKey, setStoryKey] = useState<string | null>(null)

@@ -21,7 +21,7 @@ function renderAt(path: string) {
 describe('Layout', () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  it('builds the sidebar from the nav config: sections, enabled pages only, no Home yet', async () => {
+  it('builds the sidebar from the nav config: sections and enabled pages only', async () => {
     mockApi({
       'GET /api/runs': { waiting: [], past: [], awaiting_review_count: 0 },
       'GET /api/project': PROJECT,
@@ -31,13 +31,13 @@ describe('Layout', () => {
 
     const nav = await screen.findByRole('navigation', { name: 'Main' })
     expect(within(nav).getAllByRole('link').map((l) => l.textContent)).toEqual([
+      'Home',
       'Agent console',
       'Approvals',
       'Activity log',
     ])
     expect(within(nav).getByRole('group', { name: 'work' })).toBeInTheDocument()
     expect(within(nav).getByRole('group', { name: 'record' })).toBeInTheDocument()
-    expect(within(nav).queryByRole('link', { name: 'Home' })).not.toBeInTheDocument()
   })
 
   it('shows how many runs wait for you, on Approvals only', async () => {

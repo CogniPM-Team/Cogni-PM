@@ -149,4 +149,16 @@ describe('Agent console', () => {
 
     await waitFor(() => expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({ task: 'p2', story_key: 'MCP-4' }))
   })
+
+  it('opens on the task named in the address, so Home can link straight to "Break down a story"', async () => {
+    mockApi({ 'GET /api/stories': [{ key: 'MCP-4', summary: 'Add OAuth login flow', status: 'To Do', url: 'u' }] })
+    render(
+      <MemoryRouter initialEntries={['/console?mode=M2&task=p2']}>
+        <AgentConsole />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('button', { name: /Break down a story/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(await screen.findByRole('radio', { name: /MCP-4/ })).toBeInTheDocument()
+  })
 })

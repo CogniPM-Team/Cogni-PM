@@ -19,7 +19,7 @@ export interface NavItem {
 export const SECTIONS: NavSection[] = ['WORK', 'RECORD']
 
 export const NAV_ITEMS: NavItem[] = [
-  { id: 'home', label: 'Home', path: '/home', section: 'WORK', enabled: false }, // U1
+  { id: 'home', label: 'Home', path: '/home', section: 'WORK', enabled: true },
   { id: 'console', label: 'Agent console', path: '/console', section: 'WORK', enabled: true },
   { id: 'approvals', label: 'Approvals', path: '/approvals', section: 'WORK', enabled: true, badge: 'waiting' },
   { id: 'activity', label: 'Activity log', path: '/activity', section: 'RECORD', enabled: true },
