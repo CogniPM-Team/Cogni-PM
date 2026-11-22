@@ -1,38 +1,68 @@
 # frontend/
 
-The plan is React + TypeScript + Vite. The folder layout below is in place; the code is not.
-Each empty folder holds a `.gitkeep` so git tracks it; delete that file once the folder has real content.
+React + TypeScript + Vite. Three screens, matching the paper's MVP: the **Agent console** (ask the Co-Pilot,
+start a task), **Approvals** (review and decide on drafts), and the **Activity log**.
 
 ```
 frontend/
-  public/            static files served as-is (favicon, logo)
+  public/            logo and favicon
   src/
-    api/             typed client for the backend API, plus the response types
-    assets/          images, fonts, icons imported by code
-    components/      reusable UI pieces (Layout, tables, pills, progress panel...)
-    hooks/           reusable React hooks (data fetching, polling...)
-    lib/             pure helpers with no React in them (formatting, grouping...), easy to unit test
-    pages/           one component per route (Dashboard, Approvals, Settings...)
-    styles/          global CSS and design tokens
+    api/             typed client for the backend; openapi.json (exported by the backend) and schema.d.ts (generated)
+    components/      Layout, ChatSidebar, RowMenu, ChatPanel, Markdown, Spinner, DraftCard, SourceText, StepTrace, TaskStarter, RunProgress, TaskInspector, Pills
+    hooks/           useRunEvents: follows a run's steps over Server-Sent Events
+    lib/             pure helpers with no React in them: step wording, quote highlighting, CSV, formatting
+    pages/           AgentConsole, Approvals, RunReview, Activity
+    styles/          index.css: design tokens and components
+    test/            mock API, fake EventSource, fixtures
 ```
 
-## Starting it
+## Running it
+
+You need Node 24.15 or newer. The backend must be running (see the repo README), because the dev server proxies
+`/api` to `http://localhost:8000`.
 
 ```bash
 cd frontend
-npm create vite@latest . -- --template react-ts    # answer "Ignore files and continue"
 npm install
+npm run dev          # http://localhost:5173
 ```
 
-The folders above merge with what Vite generates; move `App.tsx`, `main.tsx` etc. as you prefer.
+| Script | What it does |
+|---|---|
+| `npm run dev` | dev server with the API proxy |
+| `npm test` | unit and component tests (Vitest, jsdom, Testing Library) |
+| `npm run lint` / `npx tsc --noEmit` | ESLint and the type check |
+| `npm run build` | type check, then a production build in `dist/` |
+| `npm run gen:api` | regenerate `src/api/schema.d.ts` from `src/api/openapi.json` |
 
-## What CI expects
+## When the backend API changes
 
-CI picks the frontend up automatically as soon as `frontend/package.json` exists, and then needs:
+The types come from the backend, so a renamed field is a compile error here instead of a silent mismatch:
 
-- a committed `package-lock.json` (CI runs `npm ci`)
-- npm scripts `lint` and `build` (and `test`, which runs if present)
-- `npx tsc --noEmit` to pass
+```bash
+cd backend && python scripts/export_openapi.py      # rewrites frontend/src/api/openapi.json
+cd ../frontend && npm run gen:api                    # rewrites src/api/schema.d.ts
+```
 
-At that point also uncomment the `npm` block in `.github/dependabot.yml` and delete the "Guard" steps in the
-`frontend` job of `.github/workflows/ci.yml`, so a broken frontend can no longer be silently skipped.
+Commit both files. A backend test fails if `openapi.json` is stale, and CI fails if `schema.d.ts` is.
+
+## Design notes worth knowing
+
+- **Nothing is ticked by default and there is no "approve all".** Review fatigue is the main risk of human
+  oversight, so the Approvals screen makes the reviewer choose each draft, shows every draft's quoted source
+  highlighted in the original input, flags assumptions, and asks for one explicit confirmation naming how many
+  issues will be created. The time from "ready" to the decision is recorded by the backend.
+- **The wording is plain.** `lib/steps.ts` turns the run's step rows into sentences a PM would use, and
+  `lib/format.ts` does the same for the activity log. Mode names are Co-Pilot, Super-Pilot, Auto-Pilot; the
+  academic L-codes never appear in the UI.
+- **The CSV export defuses formulas.** Log text can come from an agent or a document, so a cell that starts with
+  `=`, `+`, `-` or `@` gets a leading apostrophe.
+- **Co-Pilot chats are kept.** The sidebar lists them with folders, rename and delete; everything is stored by the
+  backend, so it is the same after a reload. The open chat is in the address (`/console/<id>`) and the mode is a
+  query (`?mode=M2`).
+- **Auto-Pilot is shown but disabled** until Phase 8.
+
+## What CI does
+
+CI runs `npm ci`, lint, the type check, `npm run gen:api` followed by a check that `schema.d.ts` did not change,
+the tests, and the build. Dependabot watches the npm dependencies weekly.

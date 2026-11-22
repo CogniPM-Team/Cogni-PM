@@ -1,0 +1,128 @@
+import { useState } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import type { Project, RunList } from '../api/types'
+import { useFetch } from '../api/useFetch'
+import { type NavItem, pageInfo, visibleNav } from '../lib/nav'
+import { readCollapsed, saveCollapsed } from '../lib/sidebar'
+import Icon from './Icon'
+
+export default function Layout() {
+  const { pathname } = useLocation()
+  // The query string only makes the badge refetch on every navigation; the API ignores it.
+  const { data: runs } = useFetch<RunList>(`/api/runs?page=${encodeURIComponent(pathname)}`)
+  const { data: project } = useFetch<Project>('/api/project')
+  const { title, crumb, parent } = pageInfo(pathname)
+  const waiting = runs?.awaiting_review_count ?? 0
+  const groups = visibleNav()
+  const [collapsed, setCollapsed] = useState(readCollapsed)
+
+  function toggle() {
+    saveCollapsed(!collapsed)
+    setCollapsed(!collapsed)
+  }
+
+  // Collapsed, only the icon shows. The label stays in the page (hidden visually) so screen readers still read it,
+  // and a tooltip names the page for everyone else.
+  const renderItem = (item: NavItem) => (
+    <NavLink
+      key={item.id}
+      to={item.path}
+      title={collapsed ? item.label : undefined}
+      className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+    >
+      <Icon name={item.icon} />
+      <span className="side-text">{item.label}</span>
+      {item.badge === 'waiting' && waiting > 0 && (
+        <span className="nav-badge" aria-label={`${waiting} waiting for you`}>
+          {waiting}
+        </span>
+      )}
+    </NavLink>
+  )
+
+  return (
+    <div className={`app${collapsed ? ' collapsed' : ''}`}>
+      <aside className="sidebar">
+        <Link className="project" to="/home" aria-label="CogniPM home">
+          <span className="project-card">
+            <img className="project-wordmark" src="/cognipm-wordmark.png" alt="CogniPM" />
+            <img className="project-mark" src="/favicon.png" alt="" />
+            <span className="project-sub side-text">Jira · {project?.key ?? 'not connected'}</span>
+          </span>
+        </Link>
+
+        <div className="side-scroll">
+          <nav className="side-nav" aria-label="Main">
+            {groups
+              .filter((group) => group.section !== 'SYSTEM')
+              .map((group) => (
+                <div key={group.section} role="group" aria-label={group.section.toLowerCase()}>
+                  <span className="nav-label" aria-hidden="true">
+                    {group.section.charAt(0) + group.section.slice(1).toLowerCase()}
+                  </span>
+                  {group.items.map(renderItem)}
+                </div>
+              ))}
+          </nav>
+        </div>
+
+        {/* Setup pages sit at the bottom, out of the scrolling list, so they are always in the same place. */}
+        <nav className="side-nav side-foot" aria-label="System">
+          {groups.filter((group) => group.section === 'SYSTEM').flatMap((group) => group.items.map(renderItem))}
+        </nav>
+
+        <button
+          type="button"
+          className="side-toggle"
+          aria-expanded={!collapsed}
+          title={collapsed ? 'Expand the sidebar' : undefined}
+          onClick={toggle}
+        >
+          <Icon name="chevron" />
+          <span className="side-text">{collapsed ? 'Expand the sidebar' : 'Collapse'}</span>
+        </button>
+
+        <div className="jira-card" title={collapsed ? (project ? `Jira site ${project.jira_host}` : 'Jira not connected') : undefined}>
+          <span>
+            <span className={`jira-dot${project ? '' : ' off'}`} />
+            <span className="side-text">{project ? 'Jira site' : 'Jira not connected'}</span>
+          </span>
+          {project && <span className="jira-site side-text">{project.jira_host}</span>}
+        </div>
+      </aside>
+
+      <div className="main-col">
+        <header className="topbar">
+          <div>
+            <p className="crumb">
+              {project?.key}
+              {project && ' › '}
+              {parent && (
+                <>
+                  <Link to={parent.path}>{parent.label}</Link> ›{' '}
+                </>
+              )}
+              {crumb}
+            </p>
+            <h1>{title}</h1>
+          </div>
+          {project && (
+            <a className="button-link with-icon" href={project.jira_url} target="_blank" rel="noopener noreferrer">
+              Open in Jira
+              <Icon name="external" size={16} />
+            </a>
+          )}
+        </header>
+        <main>
+          <div className={`page${pathname.startsWith('/console') ? ' wide' : ''}`}>
+            <Outlet />
+          </div>
+        </main>
+        <footer className="site-footer">
+          CogniPM is a research prototype. Agents can make mistakes: drafts, reasoning and chat answers may be
+          inaccurate, and nothing is created in Jira until a person approves it. Check before you approve.
+        </footer>
+      </div>
+    </div>
+  )
+}
