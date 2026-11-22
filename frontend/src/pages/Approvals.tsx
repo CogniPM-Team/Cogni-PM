@@ -53,7 +53,7 @@ function History({ runs }: { runs: RunSummary[] }) {
         <EmptyState>No runs match.</EmptyState>
       ) : (
         <div className="card">
-          <table>
+          <table className="data-table actions-end">
             <thead>
               <tr>
                 <th>Started</th>
@@ -79,7 +79,7 @@ function History({ runs }: { runs: RunSummary[] }) {
                       {formatTime(run.created_at)}
                     </time>
                   </td>
-                  <td>
+                  <td className="key">
                     {TASK_NAMES[run.task_type] ?? run.task_type}
                     <div className="meta">{run.scope}</div>
                   </td>

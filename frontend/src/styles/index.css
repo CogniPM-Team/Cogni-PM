@@ -3,16 +3,24 @@
    autonomy mode (M1 teal, M2 orange, M3 green). */
 
 :root {
-  --bg: #f8f8f8;
+  --bg: #f6f7f8;
   --surface: #fff;
-  --surface-soft: #fbfbfb;
-  --border: #d8d8d8;
-  --border-soft: #ededed;
-  --control: #929292;
-  --text: #303030;
-  --text-muted: #6b6b6b;
-  --text-faint: #6e6e6e;
-  --ink: #353535;
+  --surface-soft: #fafbfb;
+  /* Lines, from quiet to firm: dividers inside a card, the edge of a card, the edge of a button, the edge of a field. */
+  --border-soft: #eceef0;
+  --border: #dfe2e5;
+  --line-strong: #c6cbd0;
+  --control: #8a9096;
+  /* Four tiers of text. Strong is for what to read first (titles, the key value), the body tier for sentences,
+     muted for supporting detail, faint for what only matters when you look for it (times, labels, counts).
+     Each is at least 4.5:1 on white, so quieter never means unreadable. */
+  --text-strong: #14181c;
+  --text: #2d3237;
+  --text-muted: #5b636a;
+  --text-faint: #6b727a;
+  --text-nav: #4a5157;
+  --ink: #1f2328;
+  --shadow-card: 0 1px 2px rgba(20, 24, 28, 0.05);
 
   --brand: #1c697e;
   --brand-tint: #c5eeec;
@@ -69,7 +77,7 @@ h3 { font-size: var(--text-lg); font-weight: 500; margin: 0; }
 .side-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 12px; }
 .side-nav { display: flex; flex-direction: column; gap: 2px; padding: 20px 8px 0; }
 .nav-label { margin: 20px 0 6px 16px; font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.06em; color: var(--text-faint); }
-.nav-item { position: relative; display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 14px; border-radius: var(--radius-sm); color: #5f5f5f; text-decoration: none; }
+.nav-item { position: relative; display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 14px; border-radius: var(--radius-sm); color: var(--text-nav); text-decoration: none; }
 .nav-item:hover { background: var(--bg); color: var(--text); }
 .nav-item.active { background: var(--brand-tint); color: var(--brand); font-weight: 500; }
 .nav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--amber); color: #fff; font-size: var(--text-xs); font-weight: 600; line-height: 20px; text-align: center; }
@@ -407,7 +415,7 @@ input[type='date'] { font: inherit; padding: 7px 10px; border: 1px solid var(--c
 /* ---------- Sidebar: icons and collapsing ---------- */
 .icon { flex: none; }
 .project-mark { display: none; }
-.side-toggle { display: flex; align-items: center; gap: 12px; width: calc(100% - 16px); height: 36px; margin: 4px 8px 0; padding: 0 14px; border: 0; background: none; color: #5f5f5f; line-height: 36px; font-weight: 400; text-align: left; }
+.side-toggle { display: flex; align-items: center; gap: 12px; width: calc(100% - 16px); height: 36px; margin: 4px 8px 0; padding: 0 14px; border: 0; background: none; color: var(--text-nav); line-height: 36px; font-weight: 400; text-align: left; }
 .side-toggle:hover:not(:disabled) { background: var(--bg); color: var(--text); }
 .side-toggle .icon { transition: transform 0.18s ease; }
 @media (prefers-reduced-motion: reduce) { .side-toggle .icon { transition: none; } }
@@ -517,3 +525,81 @@ tr.row-click:hover td { background: var(--surface-soft); }
 .file-pick:hover { border-color: var(--brand); background: var(--brand-wash); color: var(--brand); }
 .file-pick:focus-within { outline: 2px solid var(--brand); outline-offset: 2px; }
 .file-button .meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- visual hierarchy ---------- */
+/* Read in this order: the page title, then the heading of each part, then the strong line of each card or row, then
+   the sentence beneath, then the quiet detail. Size, weight and colour all step down together, so anything that is
+   bold, large or dark is there because it matters first. */
+body { color: var(--text); -webkit-font-smoothing: antialiased; }
+.topbar h1 { color: var(--text-strong); font-weight: 600; letter-spacing: -0.012em; }
+.crumb { color: var(--text-faint); }
+.crumb a:hover { color: var(--brand); }
+h2 { margin: 32px 0 12px; color: var(--text-strong); font-size: 1.1875rem; font-weight: 600; letter-spacing: -0.008em; }
+h3 { color: var(--text-strong); font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.004em; }
+strong { font-weight: 600; color: var(--text-strong); }
+.page-subtitle { margin-bottom: 24px; color: var(--text-muted); line-height: 1.55; }
+.muted, .empty, .empty-state { color: var(--text-muted); }
+.meta { color: var(--text-muted); font-size: 0.8125rem; }
+.stat-label, .mode-hint, .project-sub, .jira-site { color: var(--text-muted); }
+::placeholder { color: var(--text-faint); opacity: 1; }
+
+/* numbers line up in columns and do not jump as they change */
+table, .stat-value, .tab-count, .nav-badge, time { font-variant-numeric: tabular-nums; }
+
+/* Cards sit a little above the page, with a quieter edge. */
+.card, .queue-card, .run-card, .draft, .stat-card, .home-row, .home-start a, .decision-bar { border-color: var(--border); box-shadow: var(--shadow-card); }
+
+/* Buttons: the one main action is dark; everything else is a quiet outline so the eye is not pulled around. */
+button, .button-link { border-color: var(--line-strong); color: var(--text-strong); }
+button:hover:not(:disabled), .button-link:hover { border-color: var(--text-muted); background: var(--surface-soft); }
+button.primary, .button-link.primary { color: #fff; border-color: var(--ink); }
+button.primary:hover:not(:disabled), .button-link.primary:hover { background: #000; border-color: #000; }
+button:disabled { color: var(--text-faint); }
+button.link, .tabs button, .mode-tabs button, .menu button, .side-toggle { color: var(--text-muted); }
+button.link { color: var(--brand); }
+
+/* Tables: the header is the quietest line, the cells are body text, and a second line under a cell is muted. */
+th { color: var(--text-faint); font-weight: 600; border-bottom-color: var(--border); }
+td { color: var(--text); }
+td .meta, td small { color: var(--text-muted); }
+td:first-child > strong, td:first-child > .title { color: var(--text-strong); }
+td time, .when { color: var(--text-muted); }
+.activity-detail { color: var(--text-muted); }
+
+/* Run and queue cards: title first, facts beneath, and the action last. */
+.queue-title, .run-card-title h3, .draft-title { color: var(--text-strong); font-weight: 600; }
+.facts { color: var(--text-muted); }
+.facts .icon, .home-start .icon { color: var(--text-faint); }
+.home-start small { color: var(--text-muted); }
+
+/* Labels on a field and small headings are quiet; what you type is dark. */
+label.field { color: var(--text-muted); }
+label.field > span { color: var(--text); font-weight: 500; }
+.draft-body h4, .run-meta dt, .nav-label { color: var(--text-faint); font-weight: 600; }
+.run-meta dd { color: var(--text); }
+.edited-from, .assumption.none { color: var(--text-muted); }
+
+/* Tags and pills say what something is without shouting. */
+.pill { font-weight: 500; }
+.status { font-weight: 500; letter-spacing: 0.01em; }
+.tag { color: var(--text-muted); }
+.tab-count { color: var(--text-muted); font-weight: 500; }
+.soon { color: var(--text-muted); }
+
+/* The sidebar is a map, not content: quieter than the page, with only the current place in colour. */
+.nav-item { color: var(--text-nav); }
+.nav-item .icon { opacity: 0.8; }
+.nav-item:hover { color: var(--text-strong); }
+.nav-item.active { color: var(--brand); font-weight: 600; }
+.nav-item.active .icon { opacity: 1; }
+.jira-card, .jira-card span { color: var(--text-muted); }
+.site-footer { color: var(--text-faint); }
+
+/* A table of records: one column holds the thing you scan for (the .key cell); the rest is supporting detail, so it is
+   quieter and stays on one line. Only the exceptions are coloured, so a refusal or a failure stands out of a long list. */
+.data-table td { color: var(--text-muted); white-space: nowrap; }
+.data-table td.key { min-width: 11rem; color: var(--text-strong); font-weight: 500; white-space: normal; }
+.data-table td.key .meta, .data-table td.key small { font-weight: 400; color: var(--text-muted); }
+.data-table.actions-end td:last-child, .data-table.actions-end th:last-child { text-align: right; } /* the last column holds the row's actions */
+.data-table tr.activity-detail td { white-space: normal; text-align: left; }
+.outcome-rejected, .outcome-dropped { color: var(--amber-ink); font-weight: 500; }

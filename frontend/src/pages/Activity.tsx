@@ -36,7 +36,7 @@ function Row({ row, open, onToggle }: { row: AuditRow; open: boolean; onToggle: 
           </time>
         </td>
         <td>{actorLabel(row.actor)}</td>
-        <td>{actionLabel(row.action)}</td>
+        <td className="key">{actionLabel(row.action)}</td>
         <td>{row.mode ? (MODE_NAMES[row.mode] ?? row.mode) : ''}</td>
         <td>
           {row.run_id && (
@@ -165,7 +165,7 @@ export default function Activity() {
         )}
         {rows.length > 0 && (
           <div className="card">
-            <table>
+            <table className="data-table actions-end">
               <thead>
                 <tr>
                   <th>When</th>

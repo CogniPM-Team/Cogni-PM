@@ -246,7 +246,7 @@ export default function SourcesTab() {
         <EmptyState>No saved documents yet. Add meeting notes here, or choose Save as document when you draft a backlog.</EmptyState>
       ) : (
         <div className="card">
-          <table>
+          <table className="data-table actions-end">
             <thead>
               <tr>
                 <th>Title</th>

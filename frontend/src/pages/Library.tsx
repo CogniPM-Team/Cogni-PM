@@ -101,7 +101,7 @@ function CreatedIssues() {
             <EmptyState>No issues match these filters.</EmptyState>
           ) : (
             <div className="card">
-              <table>
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th>Issue</th>
@@ -115,7 +115,7 @@ function CreatedIssues() {
                 <tbody>
                   {shown.map((item) => (
                     <tr key={item.issue_key}>
-                      <td>
+                      <td className="key">
                         <a href={item.url} target="_blank" rel="noopener noreferrer" className="chip">
                           {item.issue_key}
                         </a>
