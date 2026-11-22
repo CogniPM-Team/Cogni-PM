@@ -615,3 +615,31 @@ label.field > span { color: var(--text); font-weight: 500; }
 .list-toggle[aria-expanded='false'] { color: var(--brand); }
 @media (prefers-reduced-motion: reduce) { .console { transition: none; } }
 @media (max-width: 760px) { .console.list-hidden .console-side { display: none; } }
+
+/* ---------- activity log: a line per run, its entries inside ---------- */
+.card.log-list { padding: 0; overflow: hidden; }
+.log-item { border-bottom: 1px solid var(--border-soft); }
+.log-item:last-child { border-bottom: none; }
+.log-line { display: grid; grid-template-columns: minmax(220px, 2.2fr) 100px 110px minmax(150px, 1.6fr) 100px; gap: 12px; align-items: center; padding: 12px 20px; cursor: pointer; }
+.log-line > * { min-width: 0; }
+.log-line.static { cursor: default; }
+.log-line:not(.static):not(.log-heads):hover { background: var(--surface-soft); }
+.log-heads { padding-top: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); cursor: default; color: var(--text-faint); font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.log-toggle { display: flex; align-items: center; gap: 10px; min-height: 0; padding: 0; border: none; background: none; color: var(--text-strong); font: inherit; line-height: 1.4; text-align: left; }
+.log-toggle:hover:not(:disabled) { border: none; background: none; }
+.log-toggle .icon { flex: none; color: var(--text-faint); transform: rotate(180deg); transition: transform 0.15s ease; }
+.log-item.open .log-toggle .icon { transform: rotate(-90deg); color: var(--brand); }
+@media (prefers-reduced-motion: reduce) { .log-toggle .icon { transition: none; } }
+.log-line.static .log-toggle { padding-left: 26px; } /* lines up with the titles that have an arrow */
+.log-title { font-weight: 400; color: var(--text-strong); }
+.log-run, .log-mode, .log-latest, .log-when { overflow: hidden; color: var(--text-muted); font-size: var(--text-sm); text-overflow: ellipsis; white-space: nowrap; }
+.log-heads span { overflow: visible; color: inherit; font-size: inherit; }
+.log-run { display: flex; align-items: center; }
+.log-body { padding: 4px 20px 16px 46px; background: var(--surface-soft); border-top: 1px solid var(--border-soft); }
+.log-body .data-table td { white-space: nowrap; }
+.log-body .data-table td.key { white-space: normal; }
+@media (max-width: 900px) {
+  .log-line { grid-template-columns: minmax(0, 1fr) auto; }
+  .log-mode, .log-latest, .log-heads { display: none; }
+  .log-body { padding-left: 20px; overflow-x: auto; }
+}
