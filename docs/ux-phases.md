@@ -199,6 +199,11 @@ feat(frontend): split Approvals into Waiting and History, and add Steps and Hist
 
 ## U4. Activity: links, search, date range, full export
 
+**Status: done.** Search looks in the note, the actor, the action id and the before/after of an edit (that is where a
+draft's title appears). It does not search the plain-English labels shown on screen, so "Drafted a sub-task" finds
+nothing but a draft's title does. The date range is the viewer's own days: the page converts them to exact times, and
+the end is exclusive. The old browser-side CSV code was removed; the server writes the file now.
+
 **Goal:** make the record usable for review and for the study.
 
 **Build, backend:** extend `GET /api/audit` with `from`, `to` and `q` (text search in the detail). Add

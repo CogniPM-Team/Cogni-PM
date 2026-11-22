@@ -25,6 +25,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/audit/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Audit
+         * @description Every matching row as CSV, oldest first: no 500-row cap, unlike the list. Same filters as the list.
+         *
+         *     ponytail: built in memory. Fine for a study-sized log; stream it if the log reaches millions of rows.
+         */
+        get: operations["export_audit_api_audit_export_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/changes/{change_id}": {
         parameters: {
             query?: never;
@@ -963,6 +985,12 @@ export interface operations {
             query?: {
                 filter?: "all" | "changed_jira" | "needs_you" | "rejected" | "advice_only";
                 run_id?: string | null;
+                /** @description Only entries at or after this time */
+                from?: string | null;
+                /** @description Only entries before this time */
+                to?: string | null;
+                /** @description Only entries whose text contains this */
+                q?: string | null;
                 limit?: number;
             };
             header?: never;
@@ -979,6 +1007,39 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AuditPage"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_audit_api_audit_export_csv_get: {
+        parameters: {
+            query?: {
+                filter?: "all" | "changed_jira" | "needs_you" | "rejected" | "advice_only";
+                run_id?: string | null;
+                from?: string | null;
+                to?: string | null;
+                q?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

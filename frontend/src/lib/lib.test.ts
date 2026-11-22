@@ -1,6 +1,4 @@
-import type { AuditRow } from '../api/types'
 import { AUDIT, draft, NOTES, RESET, step } from '../test/fixtures'
-import { auditToCsv, cell } from './csv'
 import { actionLabel, actorLabel, ago, describeDetail, duration, plural } from './format'
 import { segments } from './spans'
 import { traceLines } from './steps'
@@ -118,37 +116,5 @@ describe('segments', () => {
     expect(pieces.find((p) => p.text === RESET)?.drafts).toEqual(['d1', 'd2'])
     expect(pieces.every((p) => !p.drafts.includes('d3'))).toBe(true)
     expect(segments('', [])).toEqual([])
-  })
-})
-
-describe('csv', () => {
-  it('quotes cells, doubles quotes, and defuses anything a spreadsheet would run as a formula', () => {
-    expect(cell('plain')).toBe('plain')
-    expect(cell('a, b')).toBe('"a, b"')
-    expect(cell('say "hi"')).toBe('"say ""hi"""')
-    expect(cell('=HYPERLINK("http://evil")')).toBe('"\'=HYPERLINK(""http://evil"")"')
-    expect(cell('+1')).toBe("'+1")
-    expect(cell(null)).toBe('')
-  })
-
-  it('writes a header and one line per entry, including the before and after', () => {
-    const row: AuditRow = {
-      id: 1,
-      ts: '2026-11-20T08:00:00Z',
-      run_id: 'r1',
-      actor: 'human:reviewer',
-      mode: 'M2',
-      action: 'edit_draft',
-      outcome: 'edited',
-      detail: 'changed summary',
-      before: { summary: 'old' },
-      after: { summary: 'new' },
-    }
-
-    const lines = auditToCsv([row]).trim().split('\n')
-
-    expect(lines[0]).toBe('time,run,actor,mode,action,outcome,detail,before,after')
-    expect(lines[1]).toContain('human:reviewer,M2,edit_draft,edited,changed summary')
-    expect(lines[1]).toContain('"{""summary"":""old""}"')
   })
 })

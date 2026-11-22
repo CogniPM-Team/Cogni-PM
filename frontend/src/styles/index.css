@@ -389,3 +389,8 @@ button.primary .spinner { border-color: rgba(255, 255, 255, 0.35); border-top-co
 .tag.overdue { background: var(--amber-tint); color: var(--amber-ink); font-weight: 500; }
 .notice-actions { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
 .run-tab { margin-top: 12px; }
+
+/* ---------- Activity filters ---------- */
+.filters { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.filters label { display: flex; align-items: center; gap: 6px; }
+input[type='date'] { font: inherit; padding: 7px 10px; border: 1px solid var(--control); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }

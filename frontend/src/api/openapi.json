@@ -1525,6 +1525,63 @@
             }
           },
           {
+            "description": "Only entries at or after this time",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only entries at or after this time",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Only entries before this time",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only entries before this time",
+              "title": "To"
+            }
+          },
+          {
+            "description": "Only entries whose text contains this",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only entries whose text contains this",
+              "title": "Q"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
@@ -1560,6 +1617,117 @@
           }
         },
         "summary": "Audit Log",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/api/audit/export.csv": {
+      "get": {
+        "description": "Every matching row as CSV, oldest first: no 500-row cap, unlike the list. Same filters as the list.\n\nponytail: built in memory. Fine for a study-sized log; stream it if the log reaches millions of rows.",
+        "operationId": "export_audit_api_audit_export_csv_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "filter",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "changed_jira",
+                "needs_you",
+                "rejected",
+                "advice_only"
+              ],
+              "title": "Filter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Audit",
         "tags": [
           "audit"
         ]

@@ -164,12 +164,13 @@ describe('Activity log', () => {
     expect(screen.getByText(/Before:/)).toBeInTheDocument()
   })
 
-  it('asks the server for the chosen filter and offers a CSV of what is on screen', async () => {
-    const calls = mockApi({
-      'GET /api/audit': { filter: 'changed_jira', rows: [row(1, { action: 'create_issue', outcome: 'created' })] },
+  const requested = () => (fetch as unknown as { mock: { calls: [string][] } }).mock.calls.map(([url]) => url)
+  const lastAudit = () => requested().filter((u) => u.startsWith('/api/audit?')).at(-1)!
+
+  it('asks the server for the chosen filter, and links each entry to its run', async () => {
+    mockApi({
+      'GET /api/audit': { filter: 'changed_jira', rows: [row(1, { action: 'create_issue', outcome: 'created', run_id: 'abcdef1234' }), row(2, { run_id: null })] },
     })
-    const create = vi.fn(() => 'blob:csv')
-    vi.stubGlobal('URL', { createObjectURL: create, revokeObjectURL: vi.fn() })
     const user = userEvent.setup()
 
     render(
@@ -179,9 +180,79 @@ describe('Activity log', () => {
     )
     await user.click(await screen.findByRole('tab', { name: 'Changed Jira' }))
     await screen.findByText('Created a Jira issue')
-    await user.click(screen.getByRole('button', { name: 'Export CSV' }))
 
-    expect(calls.some((c) => c.path === '/api/audit')).toBe(true)
-    await waitFor(() => expect(create).toHaveBeenCalledTimes(1))
+    expect(lastAudit()).toContain('filter=changed_jira')
+    expect(screen.getByRole('link', { name: 'abcdef12' })).toHaveAttribute('href', '/approvals/abcdef1234')
+    expect(screen.getAllByRole('link', { name: /^[0-9a-f]{8}$/ })).toHaveLength(1) // an entry with no run has no link
+  })
+
+  it('searches after a pause in typing and narrows by date, in the viewer own time zone', async () => {
+    mockApi({ 'GET /api/audit': { filter: 'all', rows: [row(1)] } })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Activity />
+      </MemoryRouter>,
+    )
+    await screen.findByText('Approved')
+
+    await user.type(screen.getByRole('searchbox'), 'invoices')
+    await waitFor(() => expect(lastAudit()).toContain('q=invoices'))
+
+    await user.type(screen.getByLabelText('From'), '2026-11-18')
+    const params = new URLSearchParams(lastAudit().split('?')[1])
+    expect(new Date(params.get('from')!).getTime()).toBe(new Date(2026, 10, 18).getTime())
+    expect(params.get('limit')).toBe('500')
+  })
+
+  it('clears the search and the dates in one click, and says so when nothing matches them', async () => {
+    mockApi({ 'GET /api/audit': { filter: 'all', rows: [] } })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Activity />
+      </MemoryRouter>,
+    )
+    await screen.findByText('Nothing matches this filter yet.')
+    expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument()
+
+    await user.type(screen.getByRole('searchbox'), 'zzz')
+    expect(await screen.findByText('Nothing matches your search and dates.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Clear' }))
+    expect(screen.getByRole('searchbox')).toHaveValue('')
+    expect(await screen.findByText('Nothing matches this filter yet.')).toBeInTheDocument()
+    expect(lastAudit()).not.toContain('q=')
+  })
+
+  it('exports everything that matches, through the server, with the same filters as the list', async () => {
+    mockApi({ 'GET /api/audit': { filter: 'rejected', rows: [row(1)] } })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Activity />
+      </MemoryRouter>,
+    )
+    await user.click(await screen.findByRole('tab', { name: 'Rejected or refused' }))
+    await user.type(screen.getByRole('searchbox'), 'invoices')
+    await waitFor(() => expect(lastAudit()).toContain('q=invoices'))
+
+    const href = screen.getByRole('link', { name: 'Export everything' }).getAttribute('href')!
+
+    expect(href.startsWith('/api/audit/export.csv?')).toBe(true)
+    expect(href).toContain('filter=rejected')
+    expect(href).toContain('q=invoices')
+    expect(href).not.toContain('limit') // the export has no 500-row cap
+  })
+
+  it('tells you when the list is cut off, so the export is the way to get the rest', async () => {
+    mockApi({ 'GET /api/audit': { filter: 'all', rows: Array.from({ length: 500 }, (_, n) => row(n + 1)) } })
+    render(
+      <MemoryRouter>
+        <Activity />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText(/Showing the newest 500/)).toBeInTheDocument()
   })
 })

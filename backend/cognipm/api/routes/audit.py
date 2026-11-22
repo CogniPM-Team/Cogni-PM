@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import csv
+import io
+import json
+from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 
 from cognipm.api.deps import get_conn
 from cognipm.api.schemas import AuditPage, AuditRow
@@ -21,22 +26,103 @@ FILTERS = {
     "advice_only": "mode = 'M1'",
 }
 
+Filter = Literal["all", "changed_jira", "needs_you", "rejected", "advice_only"]
+
+
+def _like(text: str) -> str:
+    """The text as a literal ILIKE pattern: a typed % or _ must match itself, not act as a wildcard."""
+    return "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+
+def _where(
+    filter: Filter, run_id: str | None, since: datetime | None, until: datetime | None, q: str | None
+) -> tuple[str, list[object]]:
+    """The WHERE clause for the list and the export, so the two can never disagree about what matches."""
+    clauses = [f"({FILTERS[filter]})"]
+    params: list[object] = []
+    if run_id is not None:
+        clauses.append("run_id = %s")
+        params.append(run_id)
+    if since is not None:
+        clauses.append("ts >= %s")
+        params.append(since)
+    if until is not None:
+        clauses.append("ts < %s")
+        params.append(until)
+    if q and q.strip():
+        # The note, who and what, and the before/after of an edit (which is where a draft's title appears).
+        clauses.append(
+            "concat_ws(' ', detail, actor, action, before::text, after::text) ILIKE %s ESCAPE '\\'"
+        )
+        params.append(_like(q.strip()))
+    return " AND ".join(clauses), params
+
 
 @router.get("/audit", response_model=AuditPage)
 def audit_log(
-    filter: Literal["all", "changed_jira", "needs_you", "rejected", "advice_only"] = "all",
+    filter: Filter = "all",
     run_id: str | None = None,
+    since: datetime | None = Query(
+        default=None, alias="from", description="Only entries at or after this time"
+    ),
+    until: datetime | None = Query(default=None, alias="to", description="Only entries before this time"),
+    q: str | None = Query(default=None, max_length=200, description="Only entries whose text contains this"),
     limit: int = Query(default=100, ge=1, le=500),
     conn: Connection = Depends(get_conn),
 ) -> AuditPage:
     """Newest first. `changed_jira`: issues that were created. `needs_you`: activity on runs awaiting review.
     `rejected`: rejections, reruns, dropped drafts and anything a guardrail refused. `advice_only`: Co-Pilot chat."""
-    where = FILTERS[filter]
-    params: list[object] = []
-    if run_id is not None:
-        where = f"({where}) AND run_id = %s"
-        params.append(run_id)
+    where, params = _where(filter, run_id, since, until, q)
     rows = conn.execute(
         f"SELECT * FROM audit_log WHERE {where} ORDER BY id DESC LIMIT %s", (*params, limit)
     ).fetchall()
     return AuditPage(filter=filter, rows=[AuditRow(**r) for r in rows])
+
+
+COLUMNS = ("time", "run", "actor", "mode", "action", "outcome", "detail", "before", "after")
+
+
+def _cell(value: object) -> str:
+    """One CSV cell. A cell a spreadsheet would read as a formula is defused with a leading apostrophe: the
+    detail text can contain words an agent or a document supplied. (The csv module does the quoting.)"""
+    text = "" if value is None else str(value)
+    return f"'{text}" if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+@router.get("/audit/export.csv", response_class=Response)
+def export_audit(
+    filter: Filter = "all",
+    run_id: str | None = None,
+    since: datetime | None = Query(default=None, alias="from"),
+    until: datetime | None = Query(default=None, alias="to"),
+    q: str | None = Query(default=None, max_length=200),
+    conn: Connection = Depends(get_conn),
+) -> Response:
+    """Every matching row as CSV, oldest first: no 500-row cap, unlike the list. Same filters as the list.
+
+    ponytail: built in memory. Fine for a study-sized log; stream it if the log reaches millions of rows."""
+    where, params = _where(filter, run_id, since, until, q)
+    rows = conn.execute(f"SELECT * FROM audit_log WHERE {where} ORDER BY id", params).fetchall()
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\n")
+    writer.writerow(COLUMNS)
+    for r in rows:
+        writer.writerow(
+            _cell(v)
+            for v in (
+                r["ts"].isoformat(),
+                r["run_id"],
+                r["actor"],
+                r["mode"],
+                r["action"],
+                r["outcome"],
+                r["detail"],
+                None if r["before"] is None else json.dumps(r["before"]),
+                None if r["after"] is None else json.dumps(r["after"]),
+            )
+        )
+    return Response(
+        out.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="cognipm-activity.csv"'},
+    )
