@@ -262,11 +262,16 @@ class JiraClient:
         needle = name_contains.lower()
         return [f for f in fields if needle in f.get("name", "").lower()]
 
+    def _fields(self, *names: str) -> list[str]:
+        """The fields to ask Jira for, plus the story-points field when one is configured. That setting is
+        optional: an empty one must not become a blank field name in the request."""
+        return [*names, *([self.config.story_points_field] if self.config.story_points_field else [])]
+
     def search_issues(self, jql: str, max_results: int = 50) -> list[Issue]:
         body = {
             "jql": jql,
             "maxResults": max_results,
-            "fields": ["summary", "status", "issuetype", "duedate", "labels", self.config.story_points_field],
+            "fields": self._fields("summary", "status", "issuetype", "duedate", "labels"),
         }
         payload = self._request("POST", f"/rest/api/{API_VERSION}/search/jql", json=body).json()
         return [self._issue_from_raw(raw) for raw in _normalize_list(payload)]
@@ -288,7 +293,7 @@ class JiraClient:
                 "labels",
                 "resolutiondate",
                 "created",
-                self.config.story_points_field,
+                *self._fields(),
             ],
         }
         payload = self._request("POST", f"/rest/api/{API_VERSION}/search/jql", json=body).json()
@@ -318,15 +323,7 @@ class JiraClient:
             f"/rest/api/{API_VERSION}/issue/{validate_issue_key(issue_key)}",
             params={
                 "fields": ",".join(
-                    [
-                        "summary",
-                        "status",
-                        "issuetype",
-                        "duedate",
-                        "labels",
-                        "description",
-                        self.config.story_points_field,
-                    ]
+                    self._fields("summary", "status", "issuetype", "duedate", "labels", "description")
                 )
             },
         ).json()

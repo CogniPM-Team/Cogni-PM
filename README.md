@@ -53,7 +53,8 @@ cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
 ```
 
 Open `.env` and fill in `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` and `GEMINI_API_KEY`.
-`.env` is git-ignored: never commit it or paste its values anywhere. Then:
+(If a teammate sent you a ready-made `.env`, just put it in the repo root.) `.env` is git-ignored: never commit it or
+paste its values anywhere. Then:
 
 ```bash
 docker compose up --build
@@ -75,8 +76,11 @@ database tables itself on first start. Both ports are bound to your own machine 
 **A port is already in use?** Set another one for that run, for example
 `COGNIPM_PORT=8010 COGNIPM_DB_PORT=5440 docker compose up` (PowerShell: `$env:COGNIPM_PORT=8010; docker compose up`).
 
-You also need to know your site's story-points field id only if you change how estimates are handled; the drafting
-flow does not use it. (`python backend/scripts/check_connection.py` prints it if you ever need it.)
+**Updating.** After you pull new code, run `docker compose up --build` again. Your data is kept.
+
+**Optional setting:** `JIRA_STORY_POINTS_FIELD` is the id of your site's story-points field (it differs per Jira
+site). Drafting does not use it, so you can leave it empty. Only the Co-Pilot's answers about estimates need it.
+`check_connection.py` prints the id (see the live checks below).
 
 > **There is no login yet.** Anyone who can reach the app can approve a write to Jira. Run it on your own machine
 > only; do not expose it to a network.
@@ -153,7 +157,9 @@ These are the same checks CI runs on every pull request.
 
 ### Live checks against your real Jira (optional)
 
-Scripts in `backend/scripts/` talk to your real project, so read what each does first. Run them from `backend/`:
+Scripts in `backend/scripts/` talk to your real project, so read what each does first. Run them from `backend/`
+(developer setup), or inside the running app container with
+`docker compose exec app sh -c "cd /app/backend && python scripts/check_connection.py"`:
 
 | Script | Effect |
 |---|---|
@@ -171,7 +177,8 @@ Each prints before and after state so you can see nothing is left behind.
 | You see | Do this |
 |---|---|
 | `password authentication failed for user "cognipm"` or `port is already allocated` | Another PostgreSQL or container is using the port. Set a free one: `COGNIPM_DB_PORT=5440` (and use it in `DATABASE_URL`). |
-| `docker compose up` says `.env` is missing | Copy `.env.example` to `.env` and fill it in (step 1). |
+| `port is already allocated` on 5433, and you started a Postgres container by hand earlier (`docker run ... --name cognipm-db`) | The old manual container holds the port. Stop it with `docker stop cognipm-db` (it keeps its data; `docker rm cognipm-db` removes it), then run `docker compose up --build` again. The new setup starts with an empty database. |
+| `docker compose up` says `.env` is missing | Copy `.env.example` to `.env` and fill it in (see "The easy way"). |
 | The page at `localhost:8000` is blank or shows "Cannot GET" | The image has not finished building, or the build failed. Run `docker compose logs app`. |
 | `Refusing to run the tests against database 'cognipm'` | Working as intended. Use the `cognipm_test` database (see Run the tests). |
 | The website loads but shows "Could not load" | The app cannot reach Postgres or Jira. Run `docker compose logs app`. |
@@ -200,7 +207,7 @@ backend/
   scripts/         live checks (above) and the OpenAPI export
   tests/           pytest
 frontend/src/      api/ components/ hooks/ lib/ pages/ styles/ test/
-docs/              architecture.md, phases.md, sample-notes.md
+docs/              architecture.md, phases.md, ux-plan.md, sample-notes.md
 .mcp.json          lets Claude Code drive the gateway at M1, M2 or M3 by hand
 Dockerfile         the app image: builds the website, serves it from the API
 docker-compose.yml the app and PostgreSQL together
@@ -210,6 +217,7 @@ docker-compose.yml the app and PostgreSQL together
 ## Working on it
 
 Read [docs/architecture.md](docs/architecture.md) first: its decisions are settled, and if you think one is
-wrong, say so in a PR rather than building around it. How we work (branches, PRs, checks):
+wrong, say so in a PR rather than building around it. What is planned for the interface (a Home page, Settings, a
+Library) is in [docs/ux-plan.md](docs/ux-plan.md). How we work (branches, PRs, checks):
 [CONTRIBUTING.md](CONTRIBUTING.md). Working agreements for people and AI assistants: [CLAUDE.md](CLAUDE.md).
 Frontend details: [frontend/README.md](frontend/README.md).

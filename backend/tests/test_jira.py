@@ -168,3 +168,37 @@ def test_adf_round_trip_and_blank_lines():
     assert [len(p["content"]) for p in adf["content"]] == [1, 0, 1]  # a blank line is an empty paragraph
     assert _adf_to_text(adf) == "one\n\nthree\n"
     assert _adf_to_text(None) == "" and _adf_to_text("plain") == "plain"
+
+
+def test_an_unset_story_points_field_is_left_out_of_requests_instead_of_sent_as_a_blank_field_name():
+    import dataclasses
+    import json
+
+    import httpx
+
+    from cognipm.gateway.jira import JiraClient
+    from tests.helpers import CONFIG
+
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if request.method == "POST":
+            return httpx.Response(200, json={"issues": []})
+        return httpx.Response(
+            200,
+            json={
+                "key": "TEST-1",
+                "fields": {"summary": "s", "status": {"name": "To Do"}, "issuetype": {"name": "Story"}},
+            },
+        )
+
+    client = JiraClient(
+        dataclasses.replace(CONFIG, story_points_field=""), transport=httpx.MockTransport(handler)
+    )
+
+    client.search_issues("project = TEST")
+    client.get_issue("TEST-1")
+
+    assert "" not in json.loads(seen[0].content)["fields"]
+    assert "" not in seen[1].url.params["fields"].split(",")
