@@ -1,17 +1,19 @@
-const KEY = 'cognipm.sidebar.collapsed'
+/** Where each collapsible panel remembers its state. */
+export const SIDEBAR_KEY = 'cognipm.sidebar.collapsed'
+export const CONSOLE_LIST_KEY = 'cognipm.console.list.collapsed'
 
-/** Whether the sidebar was left collapsed last time. Storage can be blocked, so a failure just means "expanded". */
-export function readCollapsed(): boolean {
+/** Whether a panel was left collapsed last time. Storage can be blocked, so a failure just means "open". */
+export function readCollapsed(key: string = SIDEBAR_KEY): boolean {
   try {
-    return localStorage.getItem(KEY) === '1'
+    return localStorage.getItem(key) === '1'
   } catch {
     return false
   }
 }
 
-export function saveCollapsed(collapsed: boolean): void {
+export function saveCollapsed(collapsed: boolean, key: string = SIDEBAR_KEY): void {
   try {
-    localStorage.setItem(KEY, collapsed ? '1' : '0')
+    localStorage.setItem(key, collapsed ? '1' : '0')
   } catch {
     // not remembered across visits, but it still works for now
   }

@@ -2,10 +2,12 @@ import { useCallback, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import ChatPanel from '../components/ChatPanel'
 import ChatSidebar from '../components/ChatSidebar'
+import Icon from '../components/Icon'
 import RunHistory from '../components/RunHistory'
 import RunProgress, { type Snapshot } from '../components/RunProgress'
 import TaskInspector from '../components/TaskInspector'
 import TaskStarter, { type Task } from '../components/TaskStarter'
+import { CONSOLE_LIST_KEY, readCollapsed, saveCollapsed } from '../lib/sidebar'
 
 type Mode = 'M1' | 'M2'
 
@@ -26,12 +28,20 @@ export default function AgentConsole() {
   const [runs, setRuns] = useState<{ id: string; task: Task }[]>([])
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const onSnapshot = useCallback((s: Snapshot) => setSnapshot(s), [])
+  // The list on the left (chats or tasks) can be put away to give the work area the full width.
+  const [listHidden, setListHidden] = useState(() => readCollapsed(CONSOLE_LIST_KEY))
+  const listName = mode === 'M1' ? 'chats' : 'tasks'
+
+  function toggleList() {
+    saveCollapsed(!listHidden, CONSOLE_LIST_KEY)
+    setListHidden(!listHidden)
+  }
 
   return (
-    <div className="console">
+    <div className={`console${listHidden ? ' list-hidden' : ''}`}>
       {/* The frame is the same in every mode: a history list on the left (chats for the Co-Pilot, tasks for the
           Super-Pilot) and the work area beside it. Only what fills them changes. */}
-      <aside className="console-side">
+      <aside className="console-side" id="console-side">
         <div className="mode-pane" hidden={mode !== 'M1'}>
           <ChatSidebar />
         </div>
@@ -42,6 +52,17 @@ export default function AgentConsole() {
 
       <div className="console-main">
         <header className="console-head">
+          <button
+            type="button"
+            className="list-toggle"
+            aria-expanded={!listHidden}
+            aria-controls="console-side"
+            aria-label={listHidden ? `Show your ${listName}` : `Hide your ${listName}`}
+            title={listHidden ? `Show your ${listName}` : `Hide your ${listName}`}
+            onClick={toggleList}
+          >
+            <Icon name="panel" size={18} />
+          </button>
           <div className="mode-tabs" role="group" aria-label="Mode">
             {TABS.map((tab) => (
               <button

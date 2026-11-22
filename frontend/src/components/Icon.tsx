@@ -17,6 +17,7 @@ export type IconKey =
   | 'branch'
   | 'download'
   | 'upload'
+  | 'panel'
   | 'shield'
 
 const DRAWINGS: Record<IconKey, React.ReactNode> = {
@@ -62,6 +63,12 @@ const DRAWINGS: Record<IconKey, React.ReactNode> = {
     </>
   ),
   download: <path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 20h14" />,
+  panel: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M9.5 4v16" />
+    </>
+  ),
   upload: <path d="M12 15V4m-4.5 4.5L12 4l4.5 4.5M5 20h14" />,
   shield: (
     <>

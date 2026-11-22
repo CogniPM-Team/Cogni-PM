@@ -5,7 +5,6 @@ import type { DocumentSummary, SavedDocument, StartedRun, StartRunBody, Story } 
 import { useFetch } from '../api/useFetch'
 import { notifyRunsChanged } from '../lib/chatEvents'
 import FileButton from './FileButton'
-import Icon from './Icon'
 import Spinner from './Spinner'
 
 const MAX_INPUT = 200_000 // the API's limit
@@ -110,16 +109,6 @@ export default function TaskStarter({ initialTask = 'p1', initialDocumentId = nu
 
   return (
     <section aria-label="Start a task" className="mode-M2 card task-card">
-      <p className="safe-note">
-        <span className="safe-icon" aria-hidden="true">
-          <Icon name="shield" size={18} />
-        </span>
-        <span>
-          <strong>Nothing is created in Jira until you approve it.</strong> Drafts wait for you in{' '}
-          <Link to="/approvals">Approvals</Link>.
-        </span>
-      </p>
-
       <div className="task-choice" role="group" aria-label="Task">
         <button type="button" aria-pressed={task === 'p1'} onClick={() => setTask('p1')}>
           Draft backlog
@@ -237,6 +226,9 @@ export default function TaskStarter({ initialTask = 'p1', initialDocumentId = nu
           {busy && <Spinner />}
           {busy ? 'Starting...' : 'Start the task'}
         </button>
+        <p className="fine-print">
+          Nothing is created in Jira until you approve it. Drafts wait for you in <Link to="/approvals">Approvals</Link>.
+        </p>
       </form>
     </section>
   )

@@ -14,7 +14,10 @@ function renderConsole() {
 }
 
 describe('Agent console', () => {
-  beforeEach(() => vi.stubGlobal('EventSource', FakeEventSource))
+  beforeEach(() => {
+    localStorage.clear()
+    vi.stubGlobal('EventSource', FakeEventSource)
+  })
   afterEach(() => vi.unstubAllGlobals())
 
   it('offers the three modes, with Auto-Pilot shown but not yet available', () => {
@@ -237,5 +240,48 @@ describe('Agent console', () => {
     await user.click(screen.getByRole('button', { name: 'Start the task' }))
 
     await waitFor(() => expect(calls.find((c) => c.path === '/api/runs' && c.method === 'POST')?.body).toMatchObject({ document_id: null }))
+  })
+  it('puts the list of chats or tasks away to give the work area the full width, and brings it back', async () => {
+    mockApi({})
+    const user = userEvent.setup()
+    const { container } = renderConsole()
+    const hide = screen.getByRole('button', { name: 'Hide your chats' })
+    expect(hide).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.console')).not.toHaveClass('list-hidden')
+
+    await user.click(hide)
+
+    expect(container.querySelector('.console')).toHaveClass('list-hidden')
+    const show = screen.getByRole('button', { name: 'Show your chats' })
+    expect(show).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(show)
+
+    expect(container.querySelector('.console')).not.toHaveClass('list-hidden')
+  })
+
+  it('names the list after the mode you are in', async () => {
+    mockApi({})
+    const user = userEvent.setup()
+    renderConsole()
+
+    await user.click(screen.getByRole('button', { name: /Super-Pilot/ }))
+
+    expect(screen.getByRole('button', { name: 'Hide your tasks' })).toBeInTheDocument()
+  })
+
+  it('remembers that the list was put away, separately from the main sidebar', async () => {
+    mockApi({})
+    const user = userEvent.setup()
+    const first = renderConsole()
+    await user.click(screen.getByRole('button', { name: 'Hide your chats' }))
+    expect(localStorage.getItem('cognipm.console.list.collapsed')).toBe('1')
+    expect(localStorage.getItem('cognipm.sidebar.collapsed')).toBeNull()
+    first.unmount()
+
+    const second = renderConsole()
+
+    expect(second.container.querySelector('.console')).toHaveClass('list-hidden')
+    expect(screen.getByRole('button', { name: 'Show your chats' })).toBeInTheDocument()
   })
 })
