@@ -107,3 +107,8 @@ export function actionLabel(action: string): string {
   if (action.startsWith('guardrail:')) return `Refused by ${action.slice(10).replaceAll('_', ' ')}`
   return ACTIONS[action] ?? action.replaceAll('_', ' ')
 }
+
+/** True when something has waited longer than a day: Approvals flags it so it does not sit forgotten. */
+export function waitingOverADay(iso: string, now: Date = new Date()): boolean {
+  return now.getTime() - new Date(iso).getTime() > 24 * 60 * 60 * 1000
+}

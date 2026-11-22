@@ -172,6 +172,10 @@ feat(settings): add a Settings page with connection tests, mode permissions and 
 
 ## U3. Approvals tabs and run tabs
 
+**Status: done.** The "Open all created issues in Jira" link is a Jira search for the created keys. The Drafts panel is
+hidden, not removed, when you switch tabs, so ticks and half-typed edits survive. The run page and Approvals were not
+checked visually against real run data (the dev database has no runs); the tests cover them.
+
 **Goal:** separate "needs me" from "history", and make one run easy to understand.
 
 **Build (frontend; the data exists):**

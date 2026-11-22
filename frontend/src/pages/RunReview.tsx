@@ -1,15 +1,63 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
-import type { ApproveResult, RerunResult, RunDetail } from '../api/types'
+import type { ApproveResult, AuditPage, RerunResult, RunDetail } from '../api/types'
 import { useFetch } from '../api/useFetch'
 import DraftCard from '../components/DraftCard'
-import { EmptyState, ErrorState } from '../components/PageParts'
+import { EmptyState, ErrorState, Tabs } from '../components/PageParts'
 import { ModePill, StatusPill } from '../components/Pills'
 import SourceText from '../components/SourceText'
 import StepTrace from '../components/StepTrace'
 import { useRunEvents } from '../hooks/useRunEvents'
-import { actorLabel, ago, duration, formatTime, plural, TASK_NAMES } from '../lib/format'
+import { actionLabel, actorLabel, ago, duration, formatTime, plural, TASK_NAMES } from '../lib/format'
+import { tabPanelProps } from '../lib/tabs'
+
+type RunTab = 'drafts' | 'steps' | 'history'
+
+/** One link to every issue this run created, as a Jira search. */
+function allIssuesUrl(links: { key: string; url: string }[]): string | null {
+  if (links.length === 0) return null
+  return `${new URL(links[0].url).origin}/issues/?jql=${encodeURIComponent(`key in (${links.map((l) => l.key).join(', ')}) ORDER BY key`)}`
+}
+
+/** Everything the activity log recorded about this run, oldest first. Fetched only when the tab is opened. */
+function RunActivity({ runId }: { runId: string }) {
+  const { data, error, loading, reload } = useFetch<AuditPage>(`/api/audit?run_id=${runId}&limit=500`)
+  if (loading) return <p className="muted">Loading...</p>
+  if (error || !data) return <ErrorState title="Could not load this run's history" message={error?.message} onRetry={reload} />
+  if (data.rows.length === 0) return <EmptyState>Nothing has been recorded for this run yet.</EmptyState>
+  return (
+    <div className="card">
+      <table>
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Who</th>
+            <th>What</th>
+            <th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...data.rows].reverse().map((row) => (
+            <tr key={row.id}>
+              <td>
+                <time dateTime={row.ts} title={ago(row.ts)}>
+                  {formatTime(row.ts)}
+                </time>
+              </td>
+              <td>{actorLabel(row.actor)}</td>
+              <td>
+                {actionLabel(row.action)}
+                {row.detail && <div className="meta">{row.detail}</div>}
+              </td>
+              <td className={`outcome-${row.outcome}`}>{row.outcome}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
 export default function RunReview() {
   const { id = '' } = useParams()
@@ -36,6 +84,8 @@ function LiveRun({ runId, onDone }: { runId: string; onDone: () => void }) {
 
 function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void }) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [tab, setTab] = useState<RunTab>('drafts')
   const { run, drafts } = detail
   const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [active, setActive] = useState<string | null>(null)
@@ -47,6 +97,9 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
 
   const pending = drafts.filter((d) => d.status === 'proposed' || d.status === 'failed')
   const created = drafts.filter((d) => d.created_issue_key)
+  const allIssues = allIssuesUrl(
+    created.flatMap((d) => (d.issue_url && d.created_issue_key ? [{ key: d.created_issue_key, url: d.issue_url }] : [])),
+  )
   const apiProblem = problem instanceof ApiError ? problem.problem : undefined
 
   function toggle(draftId: string) {
@@ -94,7 +147,18 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
             <ModePill mode={run.mode} />
             <StatusPill status={run.status} />
           </div>
-          <Link to="/approvals">Back to Approvals</Link>
+          {/* Back goes to wherever you came from (Home, Approvals, the activity log). Opened directly, there is no
+              "before", so it falls back to Approvals. */}
+          <Link
+            to="/approvals"
+            onClick={(event) => {
+              if (location.key === 'default') return
+              event.preventDefault()
+              navigate(-1)
+            }}
+          >
+            Back
+          </Link>
         </div>
         <h3>{TASK_NAMES[run.task_type] ?? run.task_type}</h3>
         <p style={{ margin: '4px 0 12px' }}>{detail.status_note}</p>
@@ -164,6 +228,14 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
                 </li>
               ))}
             </ul>
+            <div className="notice-actions">
+              {allIssues && (
+                <a href={allIssues} target="_blank" rel="noopener noreferrer">
+                  Open all created issues in Jira
+                </a>
+              )}
+              <Link to="/console?mode=M2">Start another task</Link>
+            </div>
           </div>
         </div>
       )}
@@ -181,6 +253,36 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
         </div>
       )}
 
+      <Tabs
+        label="Run"
+        prefix="run"
+        value={tab}
+        onChange={(id) => setTab(id as RunTab)}
+        tabs={[
+          { id: 'drafts', label: 'Drafts', count: drafts.length },
+          { id: 'steps', label: 'Steps' },
+          { id: 'history', label: 'History' },
+        ]}
+      />
+
+      {tab === 'steps' && (
+        <div {...tabPanelProps('steps', 'run')} className="card run-tab">
+          <StepTrace steps={detail.steps} />
+          <p className="meta">
+            {run.input_tokens != null && run.output_tokens != null
+              ? `${run.model ?? 'The model'} used ${run.input_tokens.toLocaleString()} tokens in and ${run.output_tokens.toLocaleString()} out.`
+              : 'No model usage was recorded for this run.'}
+          </p>
+        </div>
+      )}
+      {tab === 'history' && (
+        <div {...tabPanelProps('history', 'run')} className="run-tab">
+          <RunActivity runId={run.id} />
+        </div>
+      )}
+
+      {/* Hidden, not removed, when another tab is open: ticks and half-typed edits are still there when you return. */}
+      <div {...tabPanelProps('drafts', 'run')} hidden={tab !== 'drafts'} className="run-tab">
       {drafts.length === 0 && run.status !== 'running' && <EmptyState>This run produced no drafts.</EmptyState>}
 
       <div className="review">
@@ -269,6 +371,7 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
             <EmptyState>The original input was not kept for this run.</EmptyState>
           )}
         </aside>
+      </div>
       </div>
     </>
   )

@@ -1,15 +1,21 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { RunList, RunSummary } from '../api/types'
 import { useFetch } from '../api/useFetch'
-import { EmptyState, ErrorState, PageHeader } from '../components/PageParts'
+import { EmptyState, ErrorState, PageHeader, Tabs } from '../components/PageParts'
 import { ModePill, StatusPill } from '../components/Pills'
-import { ago, formatTime, plural, TASK_NAMES } from '../lib/format'
+import { ago, formatTime, plural, STATUS_LABELS, TASK_NAMES, waitingOverADay } from '../lib/format'
+import { tabPanelProps } from '../lib/tabs'
+
+type View = 'waiting' | 'history'
 
 function QueueCard({ run }: { run: RunSummary }) {
+  const overdue = run.ready_at !== null && waitingOverADay(run.ready_at)
   return (
     <article className={`queue-card mode-${run.mode}`}>
       <div className="queue-top">
         <ModePill mode={run.mode} />
+        {overdue && <span className="tag overdue">Waiting over a day</span>}
       </div>
       <div className="queue-title">{TASK_NAMES[run.task_type] ?? run.task_type}</div>
       <div className="meta">{run.scope}</div>
@@ -26,31 +32,45 @@ function QueueCard({ run }: { run: RunSummary }) {
   )
 }
 
-export default function Approvals() {
-  const { data, error, loading, reload } = useFetch<RunList>('/api/runs')
+function History({ runs }: { runs: RunSummary[] }) {
+  const [status, setStatus] = useState('all')
+  const [search, setSearch] = useState('')
 
-  if (loading) return <p className="muted">Loading...</p>
-  if (error || !data) return <ErrorState title="Could not load your runs" message={error?.message} onRetry={reload} />
+  // Only offer outcomes that exist, so no choice leads to an empty list.
+  const statuses = [...new Set(runs.map((r) => r.status))]
+  const needle = search.trim().toLowerCase()
+  const shown = runs.filter(
+    (r) =>
+      (status === 'all' || r.status === status) &&
+      (needle === '' || `${r.scope} ${TASK_NAMES[r.task_type] ?? r.task_type}`.toLowerCase().includes(needle)),
+  )
+
+  if (runs.length === 0) return <EmptyState>No earlier runs yet.</EmptyState>
 
   return (
     <>
-      <PageHeader description="Nothing the agents draft reaches Jira until you approve it here. Runs that have waited longest come first." />
-      <h2 style={{ marginTop: 0 }}>{data.awaiting_review_count} waiting for you</h2>
-      {data.waiting.length === 0 ? (
-        <EmptyState>
-          Nothing is waiting. Start a task in the <Link to="/console">Agent console</Link>.
-        </EmptyState>
-      ) : (
-        <div className="queue">
-          {data.waiting.map((run) => (
-            <QueueCard key={run.id} run={run} />
-          ))}
-        </div>
-      )}
-
-      <h2>Earlier runs</h2>
-      {data.past.length === 0 ? (
-        <EmptyState>No earlier runs yet.</EmptyState>
+      <div className="toolbar">
+        <label>
+          Outcome{' '}
+          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="all">All</option>
+            {statuses.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s] ?? s}
+              </option>
+            ))}
+          </select>
+        </label>
+        <input
+          type="search"
+          aria-label="Search by task or source"
+          placeholder="Search by task or source"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+      {shown.length === 0 ? (
+        <EmptyState>No runs match.</EmptyState>
       ) : (
         <div className="card">
           <table>
@@ -65,9 +85,13 @@ export default function Approvals() {
               </tr>
             </thead>
             <tbody>
-              {data.past.map((run) => (
+              {shown.map((run) => (
                 <tr key={run.id}>
-                  <td>{formatTime(run.created_at)}</td>
+                  <td>
+                    <time dateTime={run.created_at} title={ago(run.created_at)}>
+                      {formatTime(run.created_at)}
+                    </time>
+                  </td>
                   <td>
                     {TASK_NAMES[run.task_type] ?? run.task_type}
                     <div className="meta">{run.scope}</div>
@@ -88,6 +112,47 @@ export default function Approvals() {
           </table>
         </div>
       )}
+    </>
+  )
+}
+
+export default function Approvals() {
+  const { data, error, loading, reload } = useFetch<RunList>('/api/runs')
+  const [view, setView] = useState<View>('waiting')
+
+  if (loading) return <p className="muted">Loading...</p>
+  if (error || !data) return <ErrorState title="Could not load your runs" message={error?.message} onRetry={reload} />
+
+  return (
+    <>
+      <PageHeader description="Nothing the agents draft reaches Jira until you approve it here. Runs that have waited longest come first." />
+      <Tabs
+        label="Runs"
+        prefix="approvals"
+        value={view}
+        onChange={(id) => setView(id as View)}
+        tabs={[
+          { id: 'waiting', label: 'Waiting', count: data.awaiting_review_count },
+          { id: 'history', label: 'History' },
+        ]}
+      />
+      <div {...tabPanelProps(view, 'approvals')}>
+        {view === 'waiting' ? (
+          data.waiting.length === 0 ? (
+            <EmptyState>
+              Nothing is waiting. Start a task in the <Link to="/console">Agent console</Link>.
+            </EmptyState>
+          ) : (
+            <div className="queue">
+              {data.waiting.map((run) => (
+                <QueueCard key={run.id} run={run} />
+              ))}
+            </div>
+          )
+        ) : (
+          <History runs={data.past} />
+        )}
+      </div>
     </>
   )
 }

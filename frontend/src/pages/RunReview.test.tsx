@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { draft, RESET, runDetail, NOTES } from '../test/fixtures'
+import { draft, RESET, runDetail, NOTES, step } from '../test/fixtures'
 import { jsonResponse, mockApi } from '../test/mockApi'
 import RunReview from './RunReview'
 
@@ -143,8 +143,78 @@ describe('RunReview', () => {
 
     expect(await screen.findByText('Created in Jira:')).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'MCP-15' })[0]).toHaveAttribute('href', 'https://x/browse/MCP-15')
+    const all = screen.getByRole('link', { name: 'Open all created issues in Jira' })
+    expect(all.getAttribute('href')).toMatch(/^https:\/\/x\/issues\/\?jql=key%20in%20\(MCP-15\)/)
+    expect(screen.getByRole('link', { name: 'Start another task' })).toHaveAttribute('href', '/console?mode=M2')
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Approve/ })).not.toBeInTheDocument()
     expect(screen.getByText('Time to decide')).toBeInTheDocument()
+  })
+  it('splits the run into Drafts, Steps and History tabs, and keeps what you ticked when you switch', async () => {
+    mockApi({
+      'GET /api/runs/run-1': runDetail('run-1', {
+        steps: [step(1, 'analysing', 'start'), step(2, 'generating', 'start', { detail: { attempt: 1 } })],
+      }),
+      'GET /api/audit': {
+        filter: 'all',
+        rows: [
+          { id: 2, ts: '2026-11-20T08:02:00Z', run_id: 'run-1', actor: 'human:reviewer', mode: 'M2', action: 'approve', outcome: 'applied', detail: '2 issue(s) created', before: null, after: null },
+          { id: 1, ts: '2026-11-20T08:00:00Z', run_id: 'run-1', actor: 'orchestrator:gemini', mode: 'M2', action: 'start_run', outcome: 'ok', detail: null, before: null, after: null },
+        ],
+      },
+    })
+    const user = userEvent.setup()
+    renderReview()
+
+    await user.click((await screen.findAllByRole('checkbox'))[0])
+    await user.click(screen.getByRole('tab', { name: 'Steps' }))
+    expect(await screen.findByRole('list', { name: 'Steps so far' })).toHaveTextContent('Drafting with the model')
+    expect(screen.getByText(/593 tokens in and 373 out/)).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Password reset' })).not.toBeInTheDocument() // hidden from view, but not gone (see the tick below)
+
+    await user.click(screen.getByRole('tab', { name: 'History' }))
+    expect(await screen.findByText('2 issue(s) created')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: /Drafts/ }))
+    expect((await screen.findAllByRole('checkbox'))[0]).toBeChecked()
+  })
+
+  it('shows an empty History when nothing was recorded', async () => {
+    mockApi({ 'GET /api/runs/run-1': runDetail(), 'GET /api/audit': { filter: 'all', rows: [] } })
+    const user = userEvent.setup()
+    renderReview()
+
+    await user.click(await screen.findByRole('tab', { name: 'History' }))
+
+    expect(await screen.findByText('Nothing has been recorded for this run yet.')).toBeInTheDocument()
+  })
+
+  it('goes back to where you came from, or to Approvals when opened directly', async () => {
+    mockApi({ 'GET /api/runs/run-1': runDetail() })
+    const user = userEvent.setup()
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/home', '/approvals/run-1']} initialIndex={1}>
+        <Routes>
+          <Route path="/home" element={<p>the home page</p>} />
+          <Route path="/approvals" element={<p>the approvals page</p>} />
+          <Route path="/approvals/:id" element={<RunReview />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('link', { name: 'Back' }))
+    expect(screen.getByText('the home page')).toBeInTheDocument()
+    unmount()
+
+    render(
+      <MemoryRouter initialEntries={['/approvals/run-1']}>
+        <Routes>
+          <Route path="/approvals" element={<p>the approvals page</p>} />
+          <Route path="/approvals/:id" element={<RunReview />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await user.click(await screen.findByRole('link', { name: 'Back' }))
+    expect(screen.getByText('the approvals page')).toBeInTheDocument()
   })
 })
