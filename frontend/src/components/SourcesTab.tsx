@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
+import { useAuth } from '../lib/auth'
 import type { DocumentSummary, SavedDocument } from '../api/types'
 import { useFetch } from '../api/useFetch'
 import { ago, formatTime, plural } from '../lib/format'
@@ -104,6 +105,7 @@ function AddForm({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => v
 }
 
 function Row({ doc, reload }: { doc: DocumentSummary; reload: () => void }) {
+  const { canChange } = useAuth()
   const [open, setOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [title, setTitle] = useState(doc.title)
@@ -167,12 +169,16 @@ function Row({ doc, reload }: { doc: DocumentSummary; reload: () => void }) {
           <button type="button" className="link" aria-expanded={open} onClick={() => setOpen(!open)}>
             {open ? 'Hide' : 'Open'}
           </button>
-          <button type="button" className="link" onClick={() => setRenaming(true)}>
-            Rename
-          </button>
-          <button type="button" className="link danger" onClick={() => setConfirming(true)}>
-            Delete
-          </button>
+          {canChange && (
+            <>
+              <button type="button" className="link" onClick={() => setRenaming(true)}>
+                Rename
+              </button>
+              <button type="button" className="link danger" onClick={() => setConfirming(true)}>
+                Delete
+              </button>
+            </>
+          )}
         </td>
       </tr>
       {confirming && (
@@ -215,6 +221,7 @@ function Row({ doc, reload }: { doc: DocumentSummary; reload: () => void }) {
 
 /** The Library's Sources tab: the notes and requirements saved to draft from more than once. */
 export default function SourcesTab() {
+  const { canChange } = useAuth()
   const { data, error, loading, reload } = useFetch<DocumentSummary[]>('/api/documents')
   const [adding, setAdding] = useState(false)
 
@@ -227,7 +234,7 @@ export default function SourcesTab() {
         <p className="meta" style={{ margin: 0 }}>
           Text you keep here can be drafted from again. Deleting a document removes its text.
         </p>
-        {!adding && (
+        {!adding && canChange && (
           <button type="button" onClick={() => setAdding(true)}>
             Add a document
           </button>

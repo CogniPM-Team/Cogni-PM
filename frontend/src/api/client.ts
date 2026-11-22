@@ -1,3 +1,4 @@
+import { notifySignedOut } from '../lib/authEvents'
 import type { ApplyProblem } from './types'
 
 const BASE = import.meta.env.VITE_API_BASE ?? ''
@@ -38,6 +39,7 @@ function describe(detail: unknown, status: number): { message: string; problem?:
 async function request<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<T> {
   const response = await fetch(apiUrl(path), {
     method,
+    credentials: 'include', // the sign-in cookie, also when the API is on another address
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
@@ -49,6 +51,8 @@ async function request<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: str
       // not JSON: keep the generic message
     }
     const { message, problem } = describe(payload?.detail, response.status)
+    // A 401 anywhere but the sign-in itself means the session has ended: go back to the sign-in page.
+    if (response.status === 401 && !path.startsWith('/api/auth/')) notifySignedOut()
     throw new ApiError(response.status, message, problem)
   }
   if (response.status === 204) return undefined as T // nothing to read: the delete worked

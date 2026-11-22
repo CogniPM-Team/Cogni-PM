@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import PeopleSection from '../components/PeopleSection'
+import { useAuth } from '../lib/auth'
 import { api } from '../api/client'
 import type { ConnectionTest, Deleted, Mode, Settings as SettingsData } from '../api/types'
 import { useFetch } from '../api/useFetch'
@@ -29,6 +31,7 @@ function Connection({
   path: string
   buttonHint?: string
 }) {
+  const { canChange } = useAuth()
   const [outcome, setOutcome] = useState<Outcome>({ state: 'idle' })
 
   async function test() {
@@ -51,7 +54,7 @@ function Connection({
             </div>
           ))}
         </div>
-        <button type="button" disabled={outcome.state === 'testing'} onClick={() => void test()}>
+        <button type="button" disabled={outcome.state === 'testing' || !canChange} onClick={() => void test()}>
           {outcome.state === 'testing' && <Spinner />}
           {outcome.state === 'testing' ? 'Testing...' : 'Test'}
         </button>
@@ -90,6 +93,7 @@ function EraseButton({
   run: () => Promise<Deleted>
   done: (count: number) => string
 }) {
+  const { canChange } = useAuth()
   const [step, setStep] = useState<'idle' | 'asking' | 'working'>('idle')
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -106,7 +110,7 @@ function EraseButton({
   return (
     <div className="erase">
       {step === 'idle' ? (
-        <button type="button" onClick={() => setStep('asking')}>
+        <button type="button" disabled={!canChange} onClick={() => setStep('asking')}>
           {label}
         </button>
       ) : (
@@ -130,6 +134,7 @@ function EraseButton({
 }
 
 export default function Settings() {
+  const { user } = useAuth()
   const settings = useFetch<SettingsData>('/api/settings')
   const modes = useFetch<Mode[]>('/api/modes')
 
@@ -224,6 +229,8 @@ export default function Settings() {
           done={(n) => `Erased the saved input of ${plural(n, 'run')}.`}
         />
       </section>
+
+      {user?.role === 'pm' && <PeopleSection />}
 
       <section className="card settings-section" aria-labelledby="set-about">
         <h2 id="set-about">About</h2>

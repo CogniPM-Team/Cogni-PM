@@ -48,8 +48,13 @@ export function prettyName(raw: string): string {
  * Who did it, in words a PM would use. The stored actor is `human:reviewer`, or an agent written with or
  * without an `agent:` prefix: `orchestrator:<model>[:chat]`, `claude-code`, and so on.
  */
-export function actorLabel(actor: string): string {
-  if (actor.startsWith('human:')) return 'You'
+export function actorLabel(actor: string, who: { name?: string | null; meId?: string | null } = {}): string {
+  if (actor.startsWith('human:')) {
+    if (who.meId && actor === `human:${who.meId}`) return 'You'
+    if (who.name) return who.name
+    // Before sign-in existed every decision was recorded as one shared reviewer: show it as what it was.
+    return actor === 'human:reviewer' ? 'Reviewer (before sign-in)' : 'Someone'
+  }
   const agent = actor.replace(/^agent:/, '')
   const parts = agent.split(':')
   const name = parts[0] === 'orchestrator' && parts[1] ? parts[1] : parts[0]

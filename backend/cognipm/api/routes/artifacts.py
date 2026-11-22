@@ -54,6 +54,10 @@ def list_artifacts(
     otherwise, and whenever Jira cannot be reached, its state is `unknown`."""
     rows = conn.execute(CREATED, (MAX_ITEMS,)).fetchall()
     live, complete = _jira_view(jira)
+    names = {
+        f"human:{u['id']}": u["display_name"]
+        for u in conn.execute("SELECT id, display_name FROM users").fetchall()
+    }
     base = jira.config.base_url
     items = []
     for r in rows:
@@ -70,6 +74,7 @@ def list_artifacts(
                 else ("Sub-task" if r["kind"] == "subtask" else r["effective"].get("issue_type", "Story")),
                 run_id=r["run_id"],
                 approved_by=r["approved_by"],
+                approved_by_name=names.get(r["approved_by"]),
                 created_at=r["applied_at"],
                 jira_state=state,
                 jira_status=issue.status if issue else None,

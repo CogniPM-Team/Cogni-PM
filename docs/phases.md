@@ -399,7 +399,7 @@ decide whether drafts should be allowed to carry labels at all. What was built:
 - **Types for the frontend:** `frontend/src/api/openapi.json` is exported by `scripts/export_openapi.py`, and a
   test fails if it is out of date. Generating the TypeScript types waits for the Phase 6 scaffold, where
   `openapi-typescript` becomes a dev dependency. New dependencies: `fastapi`, `uvicorn`.
-- Still open for Phase 7: login (H3). Until then do not expose this API publicly.
+- Login (H3) was Phase 7 and is now built: see "Phase 7: login and roles" below.
 
 **Done when:** the whole MVP flow can be driven with `curl` against the real site.
 
@@ -563,7 +563,38 @@ feat(frontend): add the activity log with filters and CSV export
 
 ## After the MVP: complete product before FIT4702
 
-**Phase 7. Oversight controls.** Full task state machine (`waiting for information`, `paused`, `stopped`,
+**Phase 7, part 2 of 3: login and roles (done, branch `feature/auth-roles`).** Everyone signs in; there are two roles.
+
+| | PM | Developer |
+|---|---|---|
+| Look at runs, drafts, logs, Library, Insights, Settings | yes | yes |
+| Start a task, ask the Co-Pilot, approve, reject, regenerate, edit a draft | yes | no |
+| Save, rename, delete documents; erase stored data; run the connection tests | yes | no |
+| See and manage the list of people | yes | no |
+
+- **One rule, in one place.** Every router except sign-in depends on `current_user` (`api/deps.py`): anyone signed in
+  may use a read request, only a PM may use any other. A new route cannot forget it. The website hides what would be
+  refused, but the server is the control, and `tests/test_auth.py` checks every kind of change against a developer.
+- **Accounts and sessions** (`cognipm/auth.py`, migration `0007_auth.sql`): scrypt password hashes from the standard
+  library (no new dependency); a session is a random token in an HttpOnly, SameSite=Lax cookie, and the database keeps
+  only its SHA-256. Twelve hours. A wrong password and an unknown email give the same answer in the same time.
+- **First account:** with no accounts, the API creates one PM from `COGNIPM_ADMIN_EMAIL` and `COGNIPM_ADMIN_PASSWORD`
+  and never touches them again. More people: a PM in Settings, "People", or `backend/scripts/create_user.py`.
+  The last active PM cannot be demoted or disabled. A password reset, a role change or a disabled account ends that
+  person's sessions at once.
+- **Attribution (H3):** the audit log now names the person (`human:<user id>`, so a rename never rewrites history), the
+  Activity log, the Library and the run history show their name, and the comment on the Jira issue says
+  "Approved by <name>". Entries from before sign-in still say `human:reviewer` and are shown as "Reviewer (before
+  sign-in)".
+- **Known limits, on purpose:** sign-in attempts are not rate-limited (put something in front of the API before the
+  open internet); Jira still sees one shared token (per-person OAuth is a later decision); chats are shared by
+  everyone who can sign in; Insights has no per-person numbers yet (runs do not record who decided them, only the
+  audit log does); the cookie needs `COGNIPM_COOKIE_SECURE=1` behind https, and a frontend on another address would
+  need `SameSite=None` and a CORS review before the deploy PR.
+
+*Commit message:* `feat(auth): add login and roles so only a PM can approve`
+
+**Phase 7, part 1 of 3: oversight controls (not started).** Full task state machine (`waiting for information`, `paused`, `stopped`,
 `cancelled`) using LangGraph checkpoints; Pause / Stop / Cancel with the semantics in the requirements evaluation;
 clarification request cards in the console; mid-task mode change with a review of what to keep; revert where a
 change is reversible. Add login and roles (PM approves, developer views), which is required before anyone
@@ -833,7 +864,7 @@ says why it matters and where it is scheduled. **Before any real user touches th
 |---|---|---|---|
 | H1 | **Duplicate creates (done in Phase 5)** | A crash or retry between "Jira created the issue" and "the database recorded it" leaves an orphan, and the retry makes a second issue. Stamp each issue with its draft id (a label or issue property) and look for it before creating. | Phase 5 (`apply.py`) |
 | H2 | **AI provenance in Jira (done in Phase 5)** | Jira's history shows only the API user, so teammates cannot tell which issues the AI drafted. Add the label `cognipm-drafted` and a comment with run, mode and approver. | Phase 5 |
-| H3 | **Login and attribution** | The API has no login: anyone who can reach it can approve a write, and every Jira write comes from one shared token. Add login and roles; decide between a shared bot user and per-user OAuth (3LO) so the approving PM is on record. | Phase 7 |
+| H3 | **Login and attribution (login and roles done in Phase 7; Jira writes still use the shared token)** | The API had no login: anyone who can reach it can approve a write, and every Jira write comes from one shared token. Add login and roles; decide between a shared bot user and per-user OAuth (3LO) so the approving PM is on record. | Phase 7 |
 | H4 | **Privacy and consent** | Project text goes to Gemini and sits in our audit log. Needs participant consent, redaction of personal data before the model call, a retention policy for run text and logs, and agreement with the ethics application (the paper's Privacy Act row). Only synthetic or anonymised data until then. | Phase 10, but design in Phase 5 |
 | H5 | **Jira variety** | Create fails on required custom fields; issue-type schemes, team-managed vs company-managed projects, and epic/parent rules differ; 429 rate limits need retry with backoff; search needs pagination. Surface "Jira rejected this because..." in the UI instead of a generic failure. | Phase 4 (required-field check), Phase 5 (retry) |
 | H6 | **Review fatigue** | A batch of 30 drafts invites rubber-stamping, which is the central risk of human oversight and the thing the paper studies. Highlight each draft's cited quote in the input, flag assumptions, require explicit ticks (no "approve all" default), and record time per decision. Treat the review screen as a research instrument. | Phase 6 |

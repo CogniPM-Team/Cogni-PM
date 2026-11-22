@@ -6,7 +6,8 @@ import { useFetch } from '../api/useFetch'
 import Icon from '../components/Icon'
 import { EmptyState, ErrorState, PageHeader, Tabs } from '../components/PageParts'
 import { auditParams, groupByRun, type LogItem, runTitle } from '../lib/audit'
-import { actionLabel, actorLabel, ago, describeDetail, formatTime, MODE_NAMES, plural } from '../lib/format'
+import { useActorLabel } from '../lib/auth'
+import { actionLabel, ago, describeDetail, formatTime, MODE_NAMES, plural } from '../lib/format'
 import { tabPanelProps } from '../lib/tabs'
 
 const FILTERS: { id: AuditFilter; label: string }[] = [
@@ -46,6 +47,7 @@ function Detail({ row }: { row: AuditRow }) {
 
 /** One step inside a run. */
 function StepRow({ row, open, onToggle }: { row: AuditRow; open: boolean; onToggle: () => void }) {
+  const label = useActorLabel()
   const more = hasMore(row)
   return (
     <>
@@ -60,7 +62,7 @@ function StepRow({ row, open, onToggle }: { row: AuditRow; open: boolean; onTogg
             {formatTime(row.ts)}
           </time>
         </td>
-        <td>{actorLabel(row.actor)}</td>
+        <td>{label(row.actor, row.actor_name)}</td>
         <td className="key">{actionLabel(row.action)}</td>
         <td className={`outcome-${row.outcome}`}>{row.outcome}</td>
         <td>
@@ -99,6 +101,7 @@ function LogLine({
   openSteps: Set<number>
   onToggleStep: (id: number) => void
 }) {
+  const label = useActorLabel()
   const newest = item.rows[0]
   const isRun = item.runId !== null
   const expandable = isRun || hasMore(newest)
@@ -134,7 +137,7 @@ function LogLine({
         </span>
         <span className="log-mode">{mode}</span>
         <span className={`log-latest${exception ? ` outcome-${newest.outcome}` : ''}`}>
-          {isRun ? `Latest: ${actionLabel(newest.action)}` : actorLabel(newest.actor)}
+          {isRun ? `Latest: ${actionLabel(newest.action)}` : label(newest.actor, newest.actor_name)}
         </span>
         <time className="log-when" dateTime={newest.ts} title={formatTime(newest.ts)}>
           {ago(newest.ts)}

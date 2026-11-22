@@ -115,6 +115,27 @@ npm run dev
 Open **<http://localhost:5173>**. The dev server forwards `/api` to the API on port 8000, so you see your changes
 immediately.
 
+## Signing in
+
+Everyone signs in. The first time the API starts with no accounts it creates **one PM** from two lines in `.env` (it
+does nothing after that, so changing them later never resets a password):
+
+```
+COGNIPM_ADMIN_EMAIL=you@example.com
+COGNIPM_ADMIN_PASSWORD=at least ten characters
+```
+
+Then open the site and sign in. Add teammates in **Settings, People** (a PM sees it), or from `backend/` with
+`python scripts/create_user.py their@email --name "Their Name" --role developer`, which asks for the password.
+
+| Role | Can do |
+|---|---|
+| **PM** | Everything: start tasks, ask the Co-Pilot, approve, reject, edit, change settings, manage people |
+| **Developer** | Look at everything, change nothing |
+
+The server enforces this, not the page. Sign-in attempts are not rate-limited yet, so do not put this on the open
+internet as it is. Details and limits: `docs/phases.md`, "Phase 7, part 2 of 3".
+
 ## Try it
 
 1. **Co-Pilot:** type "Which stories are still open?". It reads your Jira project and answers. Your chat appears in
@@ -187,6 +208,8 @@ Each prints before and after state so you can see nothing is left behind.
 | Creating a draft fails naming a required field | Your Jira project requires a field a draft cannot fill. Add a default for it in Jira. |
 | `npm test` fails with an engine or `jsdom` error | Upgrade Node to 24.15 or newer. |
 | `uvicorn: command not found` | Activate the backend virtualenv, then `pip install -e ".[dev]"` again. |
+| The sign-in page appears and you have no account, or the API log says `There are no accounts yet` | Add `COGNIPM_ADMIN_EMAIL` and `COGNIPM_ADMIN_PASSWORD` (10+ characters) to `.env` and restart the API: it creates the first PM only when there are no accounts. Or, from `backend/`: `python scripts/create_user.py you@example.com --name "You" --role pm`. |
+| You forgot the only PM's password | From `backend/`, with the same `DATABASE_URL`, run `python scripts/create_user.py` for a new PM, then reset the old one in Settings, People. |
 
 ### No Docker?
 

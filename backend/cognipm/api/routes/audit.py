@@ -28,6 +28,9 @@ FILTERS = {
 
 Filter = Literal["all", "changed_jira", "needs_you", "rejected", "advice_only"]
 
+# Each entry with the name of the person behind it. People are recorded by id, so a rename shows everywhere.
+NAMED = "a.*, u.display_name AS actor_name FROM audit_log a LEFT JOIN users u ON a.actor = 'human:' || u.id"
+
 
 def _like(text: str) -> str:
     """The text as a literal ILIKE pattern: a typed % or _ must match itself, not act as a wildcard."""
@@ -74,12 +77,12 @@ def audit_log(
     `rejected`: rejections, reruns, dropped drafts and anything a guardrail refused. `advice_only`: Co-Pilot chat."""
     where, params = _where(filter, run_id, since, until, q)
     rows = conn.execute(
-        f"SELECT * FROM audit_log WHERE {where} ORDER BY id DESC LIMIT %s", (*params, limit)
+        f"SELECT {NAMED} WHERE {where} ORDER BY a.id DESC LIMIT %s", (*params, limit)
     ).fetchall()
     return AuditPage(filter=filter, rows=[AuditRow(**r) for r in rows])
 
 
-COLUMNS = ("time", "run", "actor", "mode", "action", "outcome", "detail", "before", "after")
+COLUMNS = ("time", "run", "actor", "mode", "action", "outcome", "detail", "before", "after", "actor_name")
 
 
 def _cell(value: object) -> str:
@@ -102,7 +105,7 @@ def export_audit(
 
     ponytail: built in memory. Fine for a study-sized log; stream it if the log reaches millions of rows."""
     where, params = _where(filter, run_id, since, until, q)
-    rows = conn.execute(f"SELECT * FROM audit_log WHERE {where} ORDER BY id", params).fetchall()
+    rows = conn.execute(f"SELECT {NAMED} WHERE {where} ORDER BY a.id", params).fetchall()
     out = io.StringIO()
     writer = csv.writer(out, lineterminator="\n")
     writer.writerow(COLUMNS)
@@ -119,6 +122,7 @@ def export_audit(
                 r["detail"],
                 None if r["before"] is None else json.dumps(r["before"]),
                 None if r["after"] is None else json.dumps(r["after"]),
+                r["actor_name"],
             )
         )
     return Response(

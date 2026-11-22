@@ -1,3 +1,4 @@
+import { SIGNED_OUT } from '../lib/authEvents'
 import { jsonResponse, mockApi } from '../test/mockApi'
 import { api, ApiError } from './client'
 
@@ -45,5 +46,51 @@ describe('api client', () => {
 
     await expect(api.patch('/api/changes/d1', {})).rejects.toThrow('Check summary: String should have at least 1 character')
     await expect(api.get('/api/boom')).rejects.toThrow('Request failed (502)')
+  })
+})
+
+describe('api client and signing in', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('sends the sign-in cookie with every request', async () => {
+    mockApi({ 'GET /api/x': { ok: true } })
+
+    await api.get('/api/x')
+
+    const init = (fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0][1]
+    expect(init.credentials).toBe('include')
+  })
+
+  it('announces that the session has ended when any page of data comes back 401', async () => {
+    mockApi({ 'GET /api/runs': jsonResponse({ detail: 'Sign in to continue.' }, 401) })
+    const heard = vi.fn()
+    window.addEventListener(SIGNED_OUT, heard)
+
+    await expect(api.get('/api/runs')).rejects.toMatchObject({ status: 401 })
+
+    expect(heard).toHaveBeenCalledTimes(1)
+    window.removeEventListener(SIGNED_OUT, heard)
+  })
+
+  it('does not announce it for the sign-in itself, where 401 just means a wrong password', async () => {
+    mockApi({ 'POST /api/auth/login': jsonResponse({ detail: 'Wrong email or password.' }, 401) })
+    const heard = vi.fn()
+    window.addEventListener(SIGNED_OUT, heard)
+
+    await expect(api.post('/api/auth/login', {})).rejects.toMatchObject({ message: 'Wrong email or password.' })
+
+    expect(heard).not.toHaveBeenCalled()
+    window.removeEventListener(SIGNED_OUT, heard)
+  })
+
+  it('does not announce it for a 403, which is a signed-in person being refused', async () => {
+    mockApi({ 'POST /api/runs': jsonResponse({ detail: 'Your account can look but not change anything. Ask a PM.' }, 403) })
+    const heard = vi.fn()
+    window.addEventListener(SIGNED_OUT, heard)
+
+    await expect(api.post('/api/runs', {})).rejects.toMatchObject({ status: 403 })
+
+    expect(heard).not.toHaveBeenCalled()
+    window.removeEventListener(SIGNED_OUT, heard)
   })
 })

@@ -259,7 +259,11 @@ def _comment_provenance(
 ) -> None:
     """Say in Jira itself that the AI drafted this and who let it through. Best effort: the issue already
     exists, so a failed comment is recorded, not raised."""
-    how = f"Created automatically by {actor}" if automatic else f"Approved by {actor}"
+    person = conn.execute("SELECT display_name FROM users WHERE 'human:' || id = %s", (actor,)).fetchone()
+    shown = (
+        person["display_name"] if person else actor
+    )  # a person is named, an agent or an older entry is shown as is
+    how = f"Created automatically by {actor}" if automatic else f"Approved by {shown}"
     text = (
         f"Drafted by CogniPM at {mode} (run {run_id}). {how}"
         f"{', with edits to the draft' if edited else ''}. The original draft is kept in the CogniPM audit log."

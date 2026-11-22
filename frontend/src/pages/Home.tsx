@@ -6,7 +6,8 @@ import ArrowLink from '../components/ArrowLink'
 import Icon from '../components/Icon'
 import { EmptyState, ErrorState, PageHeader } from '../components/PageParts'
 import RunCard from '../components/RunCard'
-import { actionLabel, actorLabel, ago, formatTime } from '../lib/format'
+import { useActorLabel } from '../lib/auth'
+import { actionLabel, ago, formatTime } from '../lib/format'
 
 const HIDE_KEY = 'cognipm.home.checklist.hidden'
 
@@ -95,6 +96,7 @@ function StartSomething() {
 }
 
 function Recently() {
+  const label = useActorLabel()
   const audit = useFetch<AuditPage>('/api/audit?filter=all&limit=5')
 
   return (
@@ -120,7 +122,7 @@ function Recently() {
                         actionLabel(row.action)
                       )}
                     </div>
-                    <div className="meta">{actorLabel(row.actor)}</div>
+                    <div className="meta">{label(row.actor, row.actor_name)}</div>
                   </div>
                   <time className="meta when" dateTime={row.ts} title={formatTime(row.ts)}>
                     <Icon name="clock" size={14} />

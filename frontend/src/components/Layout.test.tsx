@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { type Auth, AuthContext } from '../lib/auth'
 import { runSummary } from '../test/fixtures'
 import { mockApi } from '../test/mockApi'
 import Layout from './Layout'
@@ -173,5 +174,46 @@ describe('Layout', () => {
     expect(within(crumb).getByRole('link', { name: 'Approvals' })).toHaveAttribute('href', '/approvals')
     expect(crumb).toHaveTextContent('MCP › Approvals › Review')
     expect(screen.getByRole('heading', { level: 1, name: 'Review a run' })).toBeInTheDocument()
+  })
+
+  const signedIn = (role: 'pm' | 'developer', signOut = async () => {}): Auth => ({
+    user: { id: 'u1', email: 'pat@example.com', display_name: 'Pat PM', role, disabled: false },
+    canChange: role === 'pm',
+    signOut,
+  })
+  const renderSignedIn = (auth: Auth) =>
+    render(
+      <AuthContext.Provider value={auth}>
+        <MemoryRouter initialEntries={['/home']}>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path="*" element={<p>page content</p>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+
+  it('shows who is signed in and their role, and signs them out', async () => {
+    quiet()
+    const signOut = vi.fn(async () => {})
+    const user = userEvent.setup()
+    renderSignedIn(signedIn('pm', signOut))
+
+    expect(await screen.findByText('Pat PM')).toBeInTheDocument()
+    expect(screen.getByText('PM')).toBeInTheDocument()
+    expect(screen.queryByText(/only a PM can change/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Sign out' }))
+
+    expect(signOut).toHaveBeenCalledTimes(1)
+  })
+
+  it('tells a developer plainly that they can look but not change anything', async () => {
+    quiet()
+
+    renderSignedIn(signedIn('developer'))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('only a PM can change anything')
+    expect(screen.getByText('Developer')).toBeInTheDocument()
   })
 })

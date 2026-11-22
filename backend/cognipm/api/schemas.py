@@ -270,6 +270,9 @@ class AuditRow(BaseModel):
     detail: str | None
     before: dict | None
     after: dict | None
+    actor_name: str | None = Field(
+        default=None, description="The person's name, when the actor is a person who still has an account"
+    )
 
 
 class AuditPage(BaseModel):
@@ -290,6 +293,40 @@ class ProjectOut(BaseModel):
     key: str = Field(description="The Jira project every run works in")
     jira_url: str = Field(description="The project's page in Jira")
     jira_host: str
+
+
+class LoginBody(BaseModel):
+    email: str = Field(min_length=1, max_length=254)
+    password: str = Field(min_length=1, max_length=200)
+
+
+class UserOut(BaseModel):
+    id: str
+    email: str
+    display_name: str
+    role: Literal["pm", "developer"] = Field(description="A PM can change things; a developer can only look")
+    disabled: bool
+
+
+class UserCreate(BaseModel):
+    email: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=3, max_length=254, pattern=r"^[^@\s]+@[^@\s]+$"),
+    ]
+    display_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+    role: Literal["pm", "developer"]
+    password: str = Field(min_length=10, max_length=200)
+
+
+class UserPatch(BaseModel):
+    """Only what is sent is changed."""
+
+    display_name: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)] | None
+    ) = None
+    role: Literal["pm", "developer"] | None = None
+    disabled: bool | None = None
+    password: str | None = Field(default=None, min_length=10, max_length=200)
 
 
 class RefusalCount(BaseModel):
@@ -336,6 +373,7 @@ class ArtifactOut(BaseModel):
     issue_type: str
     run_id: str
     approved_by: str | None
+    approved_by_name: str | None = None
     created_at: datetime | None
     jira_state: Literal["found", "missing", "unknown"] = Field(
         description="found: Jira lists it. missing: Jira was asked and it is gone. unknown: Jira could not tell us"

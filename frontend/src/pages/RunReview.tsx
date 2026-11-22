@@ -10,6 +10,7 @@ import { ModePill, StatusPill } from '../components/Pills'
 import SourceText from '../components/SourceText'
 import StepTrace from '../components/StepTrace'
 import { useRunEvents } from '../hooks/useRunEvents'
+import { useActorLabel } from '../lib/auth'
 import { actionLabel, actorLabel, ago, duration, formatTime, plural, TASK_NAMES } from '../lib/format'
 import { tabPanelProps } from '../lib/tabs'
 
@@ -23,6 +24,7 @@ function allIssuesUrl(links: { key: string; url: string }[]): string | null {
 
 /** Everything the activity log recorded about this run, oldest first. Fetched only when the tab is opened. */
 function RunActivity({ runId }: { runId: string }) {
+  const label = useActorLabel()
   const { data, error, loading, reload } = useFetch<AuditPage>(`/api/audit?run_id=${runId}&limit=500`)
   if (loading) return <p className="muted">Loading...</p>
   if (error || !data) return <ErrorState title="Could not load this run's history" message={error?.message} onRetry={reload} />
@@ -46,7 +48,7 @@ function RunActivity({ runId }: { runId: string }) {
                   {formatTime(row.ts)}
                 </time>
               </td>
-              <td>{actorLabel(row.actor)}</td>
+              <td>{label(row.actor, row.actor_name)}</td>
               <td>
                 {actionLabel(row.action)}
                 {row.detail && <div className="meta">{row.detail}</div>}

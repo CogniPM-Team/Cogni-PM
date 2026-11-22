@@ -17,9 +17,10 @@ from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types as genai_types
 
-from cognipm.api.deps import get_conn, get_jira, get_model_client
+from cognipm.api.deps import current_user, get_conn, get_jira, get_model_client
 from cognipm.api.schemas import ConnectionTestOut, Deleted, GuardrailOut, SettingsOut
-from cognipm.config import HUMAN_ACTOR, max_items_per_run, orchestrator_model
+from cognipm.auth import User
+from cognipm.config import max_items_per_run, orchestrator_model
 from cognipm.db.audit import log_audit
 from cognipm.db.connection import Connection
 from cognipm.gateway.guardrails import GUARDRAILS
@@ -112,7 +113,7 @@ def test_jira(jira: JiraClient = Depends(get_jira)) -> ConnectionTestOut:
 
 
 @router.post("/settings/clear-run-inputs", response_model=Deleted)
-def clear_run_inputs(conn: Connection = Depends(get_conn)) -> Deleted:
+def clear_run_inputs(conn: Connection = Depends(get_conn), user: User = Depends(current_user)) -> Deleted:
     """Erase the saved input text and instructions of runs that are decided (approved or rejected). The drafts,
     decisions and audit log stay. A run still working, waiting for review, or failed (it can be approved again or
     repeated) keeps its input: the review screen and a rerun need it."""
@@ -125,7 +126,7 @@ def clear_run_inputs(conn: Connection = Depends(get_conn)) -> Deleted:
     log_audit(
         conn,
         run_id=None,
-        actor=HUMAN_ACTOR,
+        actor=user.actor,
         mode=None,
         action="clear_run_inputs",
         outcome="ok",

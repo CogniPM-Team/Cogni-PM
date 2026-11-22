@@ -19,6 +19,9 @@ import psycopg
 import pytest
 from psycopg.rows import dict_row
 
+from cognipm.api.deps import current_user, get_user
+from cognipm.api.main import app
+from cognipm.auth import User
 from cognipm.db.migrate import apply_migrations
 from tests.db_safety import is_safe_for_tests, refusal
 
@@ -71,3 +74,28 @@ def conn(database_url, monkeypatch):
     apply_migrations(connection)
     yield connection
     connection.close()
+
+
+# Most tests are about what the API does for a PM, not about signing in, so by default every request comes from this
+# PM. The id is "reviewer" so audit rows still read "human:reviewer", as they did before sign-in existed. Tests of
+# signing in, of the roles and of attribution opt out with @pytest.mark.real_auth and sign in for real.
+SIGNED_IN_PM = User(id="reviewer", email="pm@example.com", display_name="Pat PM", role="pm")
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "real_auth: do not sign in automatically; the test signs in for real")
+
+
+@pytest.fixture(autouse=True)
+def _signed_in_pm(request, monkeypatch):
+    # A developer's own .env may name a first account (COGNIPM_ADMIN_*). Tests must not create it in the test database.
+    monkeypatch.delenv("COGNIPM_ADMIN_EMAIL", raising=False)
+    monkeypatch.delenv("COGNIPM_ADMIN_PASSWORD", raising=False)
+    if request.node.get_closest_marker("real_auth"):
+        yield
+        return
+    app.dependency_overrides[get_user] = lambda: SIGNED_IN_PM
+    app.dependency_overrides[current_user] = lambda: SIGNED_IN_PM
+    yield
+    app.dependency_overrides.pop(get_user, None)
+    app.dependency_overrides.pop(current_user, None)

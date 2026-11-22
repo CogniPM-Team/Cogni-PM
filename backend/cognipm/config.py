@@ -17,8 +17,9 @@ REPO_ROOT = BACKEND_DIR.parent
 
 load_dotenv(REPO_ROOT / ".env")
 
-# One implicit reviewer: login is out of scope for the MVP (see docs/architecture.md).
-HUMAN_ACTOR = "human:reviewer"
+# Before sign-in existed every decision was recorded as this one shared reviewer. Those rows stay as they were; new
+# ones name the person (see cognipm/auth.py: User.actor).
+LEGACY_REVIEWER = "human:reviewer"
 TOKEN_TTL_MINUTES = 15
 
 

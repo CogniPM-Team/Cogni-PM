@@ -22,7 +22,10 @@ describe('format', () => {
   })
 
   it('names who did something and what, the way a PM would', () => {
-    expect(actorLabel('human:reviewer')).toBe('You')
+    expect(actorLabel('human:reviewer')).toBe('Reviewer (before sign-in)') // the shared reviewer from before sign-in
+    expect(actorLabel('human:u1', { meId: 'u1' })).toBe('You')
+    expect(actorLabel('human:u2', { meId: 'u1', name: 'Dana' })).toBe('Dana')
+    expect(actorLabel('human:u3')).toBe('Someone') // a person whose account is gone
     expect(actorLabel('agent:orchestrator:gemini-3.6-flash')).toBe('Gemini 3.6 Flash Agent')
     expect(actorLabel('orchestrator:gemini-3.6-flash:chat')).toBe('Gemini 3.6 Flash Agent') // chat rows have no agent: prefix
     expect(actorLabel('agent:claude-code')).toBe('Claude Code Agent')

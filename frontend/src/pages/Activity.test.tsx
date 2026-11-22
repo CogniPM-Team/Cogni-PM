@@ -103,7 +103,7 @@ describe('Activity log', () => {
 
     expect(screen.getByText('changed summary')).toBeInTheDocument()
     expect(screen.getByText(/Before:/)).toBeInTheDocument()
-    expect(screen.getAllByText('You').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Reviewer (before sign-in)').length).toBeGreaterThan(0) // entries from before sign-in
   })
 
   it('opens a stand-alone entry to show its note, and gives it no run link', async () => {

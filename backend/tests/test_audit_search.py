@@ -117,7 +117,18 @@ def test_the_export_has_every_row_not_just_the_first_500(client):
     assert response.headers["content-type"].startswith("text/csv")
     assert "attachment" in response.headers["content-disposition"]
     rows = list(csv.reader(io.StringIO(response.text)))
-    assert rows[0] == ["time", "run", "actor", "mode", "action", "outcome", "detail", "before", "after"]
+    assert rows[0] == [
+        "time",
+        "run",
+        "actor",
+        "mode",
+        "action",
+        "outcome",
+        "detail",
+        "before",
+        "after",
+        "actor_name",
+    ]
     assert len(rows) - 1 == 650
     assert len(client.get("/api/audit", params={"limit": 500}).json()["rows"]) == 500
 

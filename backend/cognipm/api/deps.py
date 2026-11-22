@@ -7,8 +7,10 @@ import os
 from collections.abc import Callable, Iterator
 from functools import lru_cache
 
+from fastapi import Depends, HTTPException, Request
 from google import genai
 
+from cognipm.auth import COOKIE_NAME, User, session_user
 from cognipm.db.connection import Connection, connect
 from cognipm.gateway.jira import JiraClient
 
@@ -25,6 +27,34 @@ def get_conn() -> Iterator[Connection]:
         yield conn
     finally:
         conn.close()
+
+
+SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+
+def get_user(request: Request, conn: Connection = Depends(get_conn)) -> User:
+    """Who is signed in, from the session cookie. 401 when nobody is."""
+    user = session_user(conn, request.cookies.get(COOKIE_NAME))
+    if user is None:
+        raise HTTPException(status_code=401, detail="Sign in to continue.")
+    return user
+
+
+def current_user(request: Request, user: User = Depends(get_user)) -> User:
+    """The rule for the whole API, in one place: anyone signed in may look, and only a PM may change anything. Every
+    router except sign-in depends on this, so a new route cannot forget it."""
+    if request.method not in SAFE_METHODS and not user.is_pm:
+        raise HTTPException(
+            status_code=403, detail="Your account can look but not change anything. Ask a PM."
+        )
+    return user
+
+
+def require_pm(user: User = Depends(get_user)) -> User:
+    """For what even looking at is a PM's business (the list of people)."""
+    if not user.is_pm:
+        raise HTTPException(status_code=403, detail="Only a PM can do that.")
+    return user
 
 
 @lru_cache

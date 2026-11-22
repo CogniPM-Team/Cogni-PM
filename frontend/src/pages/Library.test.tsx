@@ -11,7 +11,8 @@ const item = (key: string, over: Partial<Artifact> = {}): Artifact => ({
   title: `Title of ${key}`,
   issue_type: 'Story',
   run_id: 'aaaaaaaa-1111',
-  approved_by: 'human:reviewer',
+  approved_by: 'human:u1',
+  approved_by_name: 'Pat PM',
   created_at: '2026-11-20T08:00:00Z',
   jira_state: 'found',
   jira_status: 'To Do',
@@ -47,7 +48,7 @@ describe('Library', () => {
     const table = within(screen.getByRole('table')) // the same words are also filter choices above it
     expect(table.getByText('To Do')).toBeInTheDocument()
     expect(table.getByText('Done')).toBeInTheDocument()
-    expect(screen.getAllByText('You')).toHaveLength(3)
+    expect(screen.getAllByText('Pat PM')).toHaveLength(3)
     expect(screen.getAllByRole('link', { name: 'aaaaaaaa' })[0]).toHaveAttribute('href', '/approvals/aaaaaaaa-1111')
   })
 

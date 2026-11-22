@@ -4,7 +4,8 @@ import type { Artifact, ArtifactList } from '../api/types'
 import { useFetch } from '../api/useFetch'
 import { EmptyState, ErrorState, PageHeader, Tabs } from '../components/PageParts'
 import SourcesTab from '../components/SourcesTab'
-import { actorLabel, ago, formatTime } from '../lib/format'
+import { useActorLabel } from '../lib/auth'
+import { ago, formatTime } from '../lib/format'
 import { tabPanelProps } from '../lib/tabs'
 
 const MISSING = 'Not found in Jira'
@@ -19,6 +20,7 @@ function statusOf(item: Artifact): string {
 const unique = (values: string[]) => [...new Set(values)].sort()
 
 function CreatedIssues() {
+  const label = useActorLabel()
   const { data, error, loading, reload } = useFetch<ArtifactList>('/api/artifacts')
   const [status, setStatus] = useState('')
   const [type, setType] = useState('')
@@ -143,7 +145,7 @@ function CreatedIssues() {
                           </time>
                         )}
                       </td>
-                      <td>{item.approved_by ? actorLabel(item.approved_by) : ''}</td>
+                      <td>{item.approved_by ? label(item.approved_by, item.approved_by_name) : ''}</td>
                       <td>
                         <Link className="id-chip" to={`/approvals/${item.run_id}`}>
                           {item.run_id.slice(0, 8)}

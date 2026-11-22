@@ -14,7 +14,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
-from cognipm.api.deps import get_conn, get_run_options
+from cognipm.api.deps import current_user, get_conn, get_run_options
 from cognipm.api.schemas import (
     ChatBody,
     ChatFolderOut,
@@ -26,7 +26,7 @@ from cognipm.api.schemas import (
     FolderBody,
     SessionPatch,
 )
-from cognipm.config import HUMAN_ACTOR
+from cognipm.auth import User
 from cognipm.db.audit import log_audit
 from cognipm.db.connection import Connection
 from cognipm.orchestrator.chat import ChatError, run_chat_turn
@@ -168,7 +168,9 @@ def update_session(
 
 
 @router.delete("/chat/sessions/{session_id}", status_code=204)
-def delete_session(session_id: str, conn: Connection = Depends(get_conn)) -> Response:
+def delete_session(
+    session_id: str, conn: Connection = Depends(get_conn), user: User = Depends(current_user)
+) -> Response:
     """Delete a chat and every message in it. This cannot be undone."""
     _session(conn, session_id)
     conn.execute("DELETE FROM chat_messages WHERE session_id = %s", (session_id,))
@@ -177,7 +179,7 @@ def delete_session(session_id: str, conn: Connection = Depends(get_conn)) -> Res
     log_audit(
         conn,
         run_id=None,
-        actor=HUMAN_ACTOR,
+        actor=user.actor,
         mode="M1",
         action="delete_chat",
         outcome="deleted",

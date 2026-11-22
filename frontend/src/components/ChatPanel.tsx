@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { ChatResult, ChatSessionDetail } from '../api/types'
 import { useFetch } from '../api/useFetch'
+import { useAuth } from '../lib/auth'
 import { notifyChatsChanged } from '../lib/chatEvents'
 import { plural } from '../lib/format'
 import Markdown from './Markdown'
@@ -38,6 +39,7 @@ export default function ChatPanel({ chatId }: { chatId?: string }) {
 }
 
 function Conversation({ chatId, title, initial }: { chatId?: string; title: string | null; initial: Message[] }) {
+  const { canChange } = useAuth()
   const navigate = useNavigate()
   const [messages, setMessages] = useState<Message[]>(initial)
   const [sessionId, setSessionId] = useState<string | null>(chatId ?? null)
@@ -150,7 +152,7 @@ function Conversation({ chatId, title, initial }: { chatId?: string; title: stri
               }}
               placeholder="Ask a question about the project"
             />
-            <button type="submit" className="primary" disabled={busy || !draft.trim()}>
+            <button type="submit" className="primary" disabled={busy || !draft.trim() || !canChange} title={canChange ? undefined : 'Only a PM can ask the Co-Pilot'}>
               {busy ? 'Working...' : 'Ask'}
             </button>
           </form>

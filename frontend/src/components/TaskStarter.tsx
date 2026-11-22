@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
+import { useAuth } from '../lib/auth'
 import type { DocumentSummary, SavedDocument, StartedRun, StartRunBody, Story } from '../api/types'
 import { useFetch } from '../api/useFetch'
 import { notifyRunsChanged } from '../lib/chatEvents'
@@ -21,6 +22,7 @@ interface Props {
 
 /** The Super-Pilot (M2): hand the agent a task. It drafts; nothing is created in Jira until you approve. */
 export default function TaskStarter({ initialTask = 'p1', initialDocumentId = null, onStarted }: Props) {
+  const { canChange } = useAuth()
   const [task, setTask] = useState<Task>(initialTask)
   const [text, setText] = useState('')
   const [instructions, setInstructions] = useState('')
@@ -222,7 +224,8 @@ export default function TaskStarter({ initialTask = 'p1', initialDocumentId = nu
 
         {initial.error && <p className="error">Could not open that saved document: {initial.error.message}</p>}
         {error && <p className="error">{error}</p>}
-        <button type="submit" className="primary" disabled={!ready || busy}>
+        <button type="submit" className="primary" disabled={!ready || busy || !canChange}
+          title={canChange ? undefined : 'Only a PM can start a task'}>
           {busy && <Spinner />}
           {busy ? 'Starting...' : 'Start the task'}
         </button>

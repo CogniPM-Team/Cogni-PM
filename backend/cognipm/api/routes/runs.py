@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from cognipm.api import review
-from cognipm.api.deps import conn_factory, get_conn, get_jira, get_run_options
+from cognipm.api.deps import conn_factory, current_user, get_conn, get_jira, get_run_options
 from cognipm.api.launcher import StartFailed, start_task_run
 from cognipm.api.schemas import (
     ApplyProblem,
@@ -38,7 +38,7 @@ from cognipm.api.schemas import (
     StartRunBody,
     StepOut,
 )
-from cognipm.config import HUMAN_ACTOR
+from cognipm.auth import User
 from cognipm.db.audit import log_audit
 from cognipm.db.connection import Connection
 from cognipm.gateway.apply import ApplyFailed, apply_staged_changes
@@ -193,7 +193,10 @@ def list_runs(conn: Connection = Depends(get_conn)) -> RunList:
 
 @router.get("/runs/{run_id}", response_model=RunDetail)
 def show_run(
-    run_id: str, conn: Connection = Depends(get_conn), jira: JiraClient = Depends(get_jira)
+    run_id: str,
+    conn: Connection = Depends(get_conn),
+    jira: JiraClient = Depends(get_jira),
+    user: User = Depends(current_user),
 ) -> RunDetail:
     run = _get_run(conn, run_id)
     summary = RunSummary(
@@ -214,8 +217,9 @@ def show_run(
         drafts=[_draft_out(r, run["input_text"], jira) for r in rows],
         steps=[StepOut(**s) for s in steps],
         status_note=review.status_note(run["status"], pending=len(pending)),
-        editable=run["status"] == "awaiting_review",
-        can_decide=run["status"] in DECIDABLE and bool(pending),
+        editable=user.is_pm
+        and run["status"] == "awaiting_review",  # a developer sees the drafts but cannot change them
+        can_decide=user.is_pm and run["status"] in DECIDABLE and bool(pending),
         seconds_to_decision=(decided - ready).total_seconds() if decided and ready else None,
     )
 
@@ -263,6 +267,7 @@ def edit_draft(
     body: ChangeEdit,
     conn: Connection = Depends(get_conn),
     jira: JiraClient = Depends(get_jira),
+    user: User = Depends(current_user),
 ) -> DraftOut:
     """Edit a draft before approving it. The agent's original stays in `payload`; the PM's version is
     `edited_payload`, and the audit log records exactly what changed."""
@@ -299,7 +304,7 @@ def edit_draft(
     log_audit(
         conn,
         run_id=change["run_id"],
-        actor=HUMAN_ACTOR,
+        actor=user.actor,
         mode=change["run_mode"],
         action="edit_draft",
         outcome="edited",
@@ -317,6 +322,7 @@ def approve_run(
     body: ApproveBody | None = None,
     conn: Connection = Depends(get_conn),
     jira: JiraClient = Depends(get_jira),
+    user: User = Depends(current_user),
 ) -> ApproveResult:
     """Create the ticked drafts in Jira. Drafts left out are dropped, not created. Safe to repeat: an
     already-approved run is refused, and a run that failed part-way creates only what is left."""
@@ -346,7 +352,7 @@ def approve_run(
             log_audit(
                 conn,
                 run_id=run_id,
-                actor=HUMAN_ACTOR,
+                actor=user.actor,
                 mode=run["mode"],
                 action="drop_draft",
                 outcome="dropped",
@@ -356,7 +362,7 @@ def approve_run(
         token = issue_approval_token(conn, run_id)
         try:
             created = apply_staged_changes(
-                jira, conn, run_id, actor=HUMAN_ACTOR, mode=run["mode"], change_ids=chosen
+                jira, conn, run_id, actor=user.actor, mode=run["mode"], change_ids=chosen
             )
         except ApplyFailed as failure:
             conn.execute("UPDATE runs SET status = 'failed' WHERE id = %s", (run_id,))
@@ -364,7 +370,7 @@ def approve_run(
             log_audit(
                 conn,
                 run_id=run_id,
-                actor=HUMAN_ACTOR,
+                actor=user.actor,
                 mode=run["mode"],
                 action="approve",
                 outcome="failed",
@@ -393,7 +399,7 @@ def approve_run(
         log_audit(
             conn,
             run_id=run_id,
-            actor=HUMAN_ACTOR,
+            actor=user.actor,
             mode=run["mode"],
             action="approve",
             outcome="applied",
@@ -429,7 +435,10 @@ def _require_parents_chosen(conn: Connection, pending: list[dict], chosen: set[s
 
 @router.post("/runs/{run_id}/reject", response_model=RejectResult)
 def reject_run(
-    run_id: str, body: RejectBody | None = None, conn: Connection = Depends(get_conn)
+    run_id: str,
+    body: RejectBody | None = None,
+    conn: Connection = Depends(get_conn),
+    user: User = Depends(current_user),
 ) -> RejectResult:
     """Send the run back. Nothing is created in Jira; the note is kept as feedback."""
     comment = body.comment if body else ""
@@ -449,7 +458,7 @@ def reject_run(
         log_audit(
             conn,
             run_id=run_id,
-            actor=HUMAN_ACTOR,
+            actor=user.actor,
             mode=run["mode"],
             action="reject",
             outcome="rejected",
@@ -466,6 +475,7 @@ async def rerun(
     jira: JiraClient = Depends(get_jira),
     open_connection=Depends(conn_factory),
     options: dict = Depends(get_run_options),
+    user: User = Depends(current_user),
 ) -> RerunResult:
     """Run the same task again with the PM's note as extra instruction. The old run is rejected and the new
     one records which run it replaces, so reruns chain."""
@@ -507,7 +517,7 @@ async def rerun(
         log_audit(
             conn,
             run_id=run_id,
-            actor=HUMAN_ACTOR,
+            actor=user.actor,
             mode=old["mode"],
             action="rerun",
             outcome="rerun",

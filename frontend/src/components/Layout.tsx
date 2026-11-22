@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import type { Project, RunList } from '../api/types'
 import { useFetch } from '../api/useFetch'
+import { ROLE_NAMES, useAuth } from '../lib/auth'
 import { type NavItem, pageInfo, visibleNav } from '../lib/nav'
 import { readCollapsed, saveCollapsed } from '../lib/sidebar'
 import Icon from './Icon'
@@ -15,6 +16,7 @@ export default function Layout() {
   const waiting = runs?.awaiting_review_count ?? 0
   const groups = visibleNav()
   const [collapsed, setCollapsed] = useState(readCollapsed)
+  const { user, canChange, signOut } = useAuth()
 
   function toggle() {
     saveCollapsed(!collapsed)
@@ -82,6 +84,21 @@ export default function Layout() {
           <span className="side-text">{collapsed ? 'Expand the sidebar' : 'Collapse'}</span>
         </button>
 
+        {user && (
+          <div className="user-card">
+            <span className="avatar" aria-hidden="true">
+              {user.display_name.charAt(0).toUpperCase()}
+            </span>
+            <span className="side-text user-text">
+              <strong>{user.display_name}</strong>
+              <small>{ROLE_NAMES[user.role]}</small>
+            </span>
+            <button type="button" className="icon-button" aria-label="Sign out" title="Sign out" onClick={() => void signOut()}>
+              <Icon name="signout" size={16} />
+            </button>
+          </div>
+        )}
+
         <div className="jira-card" title={collapsed ? (project ? `Jira site ${project.jira_host}` : 'Jira not connected') : undefined}>
           <span>
             <span className={`jira-dot${project ? '' : ' off'}`} />
@@ -115,6 +132,11 @@ export default function Layout() {
         </header>
         <main>
           <div className={`page${pathname.startsWith('/console') ? ' wide' : ''}`}>
+            {user && !canChange && (
+              <p className="notice warning view-only" role="status">
+                You can look at everything, but only a PM can change anything. Ask a PM if you need to.
+              </p>
+            )}
             <Outlet />
           </div>
         </main>
