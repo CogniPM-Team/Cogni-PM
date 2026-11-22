@@ -1041,6 +1041,150 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "InsightsOut": {
+        "description": "Counts, not percentages: the page shows \"3 of 12\", and every rate is one of these over another. Each field is\ndefined in docs/phases.md (\"Insights: what the numbers mean\").",
+        "properties": {
+          "approved_untouched": {
+            "description": "Approved runs where every draft was created and none was edited",
+            "title": "Approved Untouched",
+            "type": "integer"
+          },
+          "decision_seconds_median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Seconds Median"
+          },
+          "decision_seconds_p90": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nearest-rank 90th percentile",
+            "title": "Decision Seconds P90"
+          },
+          "decisions_timed": {
+            "description": "Decided runs that have a time to decision",
+            "title": "Decisions Timed",
+            "type": "integer"
+          },
+          "drafts_created_after_edit": {
+            "title": "Drafts Created After Edit",
+            "type": "integer"
+          },
+          "drafts_created_as_written": {
+            "title": "Drafts Created As Written",
+            "type": "integer"
+          },
+          "drafts_edited": {
+            "description": "Reviewed drafts whose text differs from the agent's original",
+            "title": "Drafts Edited",
+            "type": "integer"
+          },
+          "drafts_left_out": {
+            "title": "Drafts Left Out",
+            "type": "integer"
+          },
+          "drafts_reviewed": {
+            "description": "Drafts of decided runs; the next three add up to this",
+            "title": "Drafts Reviewed",
+            "type": "integer"
+          },
+          "refusals": {
+            "items": {
+              "$ref": "#/components/schemas/RefusalCount"
+            },
+            "title": "Refusals",
+            "type": "array"
+          },
+          "refusals_total": {
+            "title": "Refusals Total",
+            "type": "integer"
+          },
+          "reruns": {
+            "description": "Runs that replace an earlier one",
+            "title": "Reruns",
+            "type": "integer"
+          },
+          "runs_approved": {
+            "description": "Decided runs with at least one draft created",
+            "title": "Runs Approved",
+            "type": "integer"
+          },
+          "runs_decided": {
+            "description": "Of those, approved or rejected",
+            "title": "Runs Decided",
+            "type": "integer"
+          },
+          "runs_open": {
+            "description": "Still working, waiting for review, or failed part-way: left out of every rate",
+            "title": "Runs Open",
+            "type": "integer"
+          },
+          "runs_rejected": {
+            "title": "Runs Rejected",
+            "type": "integer"
+          },
+          "runs_started": {
+            "description": "Runs started in the range: the group every other number is about",
+            "title": "Runs Started",
+            "type": "integer"
+          },
+          "tokens_average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens Average"
+          },
+          "tokens_runs": {
+            "description": "Runs that have a token figure",
+            "title": "Tokens Runs",
+            "type": "integer"
+          },
+          "tokens_total": {
+            "title": "Tokens Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "runs_started",
+          "runs_decided",
+          "runs_open",
+          "runs_approved",
+          "runs_rejected",
+          "drafts_reviewed",
+          "drafts_created_as_written",
+          "drafts_created_after_edit",
+          "drafts_left_out",
+          "drafts_edited",
+          "decisions_timed",
+          "decision_seconds_median",
+          "decision_seconds_p90",
+          "reruns",
+          "refusals",
+          "refusals_total",
+          "tokens_total",
+          "tokens_runs",
+          "tokens_average",
+          "approved_untouched"
+        ],
+        "title": "InsightsOut",
+        "type": "object"
+      },
       "ModeOut": {
         "properties": {
           "can_commit": {
@@ -1136,6 +1280,24 @@
           "jira_host"
         ],
         "title": "ProjectOut",
+        "type": "object"
+      },
+      "RefusalCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "rule": {
+            "title": "Rule",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule",
+          "count"
+        ],
+        "title": "RefusalCount",
         "type": "object"
       },
       "RejectBody": {
@@ -2675,6 +2837,219 @@
         "summary": "Health",
         "tags": [
           "meta"
+        ]
+      }
+    },
+    "/api/insights": {
+      "get": {
+        "description": "The oversight numbers for the runs started in the range. Reads only the runs, drafts and activity log.",
+        "operationId": "insights_api_insights_get",
+        "parameters": [
+          {
+            "description": "Only runs started at or after this time",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only runs started at or after this time",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Only runs started before this time",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only runs started before this time",
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "task",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "p1",
+                    "p2"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Task"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "M2",
+                    "M3"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Insights",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/insights/export.csv": {
+      "get": {
+        "description": "One line per run in the group, with the figures each number is made from, so any number on the page can be\nchecked by hand. Same filters as the page.",
+        "operationId": "export_insights_api_insights_export_csv_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "task",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "p1",
+                    "p2"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Task"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "M2",
+                    "M3"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Insights",
+        "tags": [
+          "insights"
         ]
       }
     },

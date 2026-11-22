@@ -28,7 +28,10 @@ describe('RunReview', () => {
     expect(screen.queryByText('The notes ask for this directly.')).not.toBeInTheDocument() // the reasons wait to be opened
     await userEvent.click(screen.getAllByRole('button', { name: 'Why the agent drafted this' })[0])
     expect(screen.getByText('The notes ask for this directly.')).toBeInTheDocument()
-    expect(screen.getByText('Check this assumption')).toBeInTheDocument() // the second draft states one
+    // only the second draft states an assumption, and its amber tab is how the reviewer finds it
+    const flagged = screen.getAllByRole('button', { name: 'Check this assumption' })
+    expect(flagged).toHaveLength(1)
+    await userEvent.click(flagged[0])
     expect(screen.getByText('Logs are kept for 90 days')).toBeInTheDocument()
     expect(screen.getAllByRole('checkbox').every((box) => !(box as HTMLInputElement).checked)).toBe(true)
     expect(screen.getByRole('button', { name: 'Approve and create' })).toBeDisabled() // no approve-all shortcut

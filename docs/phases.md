@@ -743,7 +743,7 @@ breaks it into phases U0 to U10 on the branch `feature/uiux-improvement`.
 
 ## Insights: what the numbers mean
 
-**Status: DRAFT. Agreed by the team: ☐  Agreed by the supervisor: ☐.** The Insights page (phase U7) is built from
+**Status: DRAFT, and implemented on its default answers (branch `feature/insights`). Agreed by the team: ☐  Agreed by the supervisor: ☐.** The Insights page (phase U7) is built from
 these definitions, and nothing is built until they are agreed. A number the study quotes in the paper must mean exactly
 what is written here, so change a definition here first and the code second.
 

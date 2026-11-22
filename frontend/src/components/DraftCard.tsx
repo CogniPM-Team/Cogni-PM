@@ -44,7 +44,7 @@ function Description({ text }: { text: string }) {
 
 export default function DraftCard({ draft, ticked, canTick, canEdit, onTick, onActivate, onSaved }: Props) {
   const [editing, setEditing] = useState(false)
-  const [evidence, setEvidence] = useState<'why' | 'quotes' | null>(null)
+  const [evidence, setEvidence] = useState<'why' | 'assumption' | 'quotes' | null>(null)
   const effective = draft.effective as Payload
   const original = draft.payload as Payload
   const edited = draft.edited_payload !== null
@@ -130,18 +130,8 @@ export default function DraftCard({ draft, ticked, canTick, canEdit, onTick, onA
           </>
         )}
 
-        {/* An assumption is the agent telling you what it guessed, so it stays in view. The rest is evidence you open
-            when you want to check the draft, one piece at a time. */}
-        {hasAssumption && (
-          <div className="assumption" role="note">
-            <Icon name="alert" size={16} />
-            <div>
-              <strong>Check this assumption</strong>
-              <p>{draft.assumptions}</p>
-            </div>
-          </div>
-        )}
-
+        {/* The reasons, the agent's guess and the quotes sit one press away, one at a time, so a run of drafts reads as a
+            list of things to decide. A draft that states an assumption has an amber tab, so it is never missed. */}
         {draft.error && <p className="error">Jira refused this one: {draft.error}</p>}
 
         {!editing && (
@@ -159,6 +149,20 @@ export default function DraftCard({ draft, ticked, canTick, canEdit, onTick, onA
                 Why
                 <Icon name="info" size={14} />
               </button>
+              {hasAssumption && (
+                <button
+                  type="button"
+                  className="evidence-tab warn"
+                  aria-expanded={evidence === 'assumption'}
+                  aria-controls={`${draft.id}-evidence`}
+                  aria-label="Check this assumption"
+                  title="The agent guessed something here. Check this assumption"
+                  onClick={() => setEvidence(evidence === 'assumption' ? null : 'assumption')}
+                >
+                  Assumption
+                  <Icon name="alert" size={14} />
+                </button>
+              )}
               <button
                 type="button"
                 className={`evidence-tab${lostQuotes > 0 ? ' warn' : ''}`}
@@ -183,6 +187,8 @@ export default function DraftCard({ draft, ticked, canTick, canEdit, onTick, onA
           <div className="evidence-panel" id={`${draft.id}-evidence`}>
             {evidence === 'why' ? (
               <p>{draft.reasoning}</p>
+            ) : evidence === 'assumption' ? (
+              <p className="assumption-text">{draft.assumptions}</p>
             ) : (
               draft.sources.map((source) => (
                 <p key={source.quote} className={`quote${source.start === null ? ' lost' : ''}`}>

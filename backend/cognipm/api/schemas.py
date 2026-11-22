@@ -292,6 +292,41 @@ class ProjectOut(BaseModel):
     jira_host: str
 
 
+class RefusalCount(BaseModel):
+    rule: str
+    count: int
+
+
+class InsightsOut(BaseModel):
+    """Counts, not percentages: the page shows "3 of 12", and every rate is one of these over another. Each field is
+    defined in docs/phases.md ("Insights: what the numbers mean")."""
+
+    runs_started: int = Field(description="Runs started in the range: the group every other number is about")
+    runs_decided: int = Field(description="Of those, approved or rejected")
+    runs_open: int = Field(
+        description="Still working, waiting for review, or failed part-way: left out of every rate"
+    )
+    runs_approved: int = Field(description="Decided runs with at least one draft created")
+    runs_rejected: int
+    drafts_reviewed: int = Field(description="Drafts of decided runs; the next three add up to this")
+    drafts_created_as_written: int
+    drafts_created_after_edit: int
+    drafts_left_out: int
+    drafts_edited: int = Field(description="Reviewed drafts whose text differs from the agent's original")
+    decisions_timed: int = Field(description="Decided runs that have a time to decision")
+    decision_seconds_median: float | None
+    decision_seconds_p90: float | None = Field(description="Nearest-rank 90th percentile")
+    reruns: int = Field(description="Runs that replace an earlier one")
+    refusals: list[RefusalCount]
+    refusals_total: int
+    tokens_total: int
+    tokens_runs: int = Field(description="Runs that have a token figure")
+    tokens_average: float | None
+    approved_untouched: int = Field(
+        description="Approved runs where every draft was created and none was edited"
+    )
+
+
 class ArtifactOut(BaseModel):
     """An issue CogniPM created in Jira."""
 

@@ -296,6 +296,13 @@ an **edit**, **approval rate**, **rejection rate**, and **time to decision** (wh
 with a worked example, and are waiting for the team and supervisor to agree (five questions are listed there). The
 backend and the page follow those definitions exactly, and the backend test uses the worked example as its seeded data.
 
+**Status: built on the default answers** to the five questions in `phases.md` (a partly approved run counts as approved;
+Regenerate counts as a rejection and is also shown under reruns; the "approved untouched" figure is kept; the group is
+runs started in the range). If the team answers differently, change the definition in `phases.md` and the one
+function that counts it. The page has no login, so everyone who opens it sees it: whether participants should is
+still the supervisor's call. Extras beyond the plan: `GET /api/insights/export.csv` gives one line per run with the
+figures each number is made from, and hovering a number says which stored fields it comes from.
+
 **Build, backend:** `GET /api/insights?from=&to=&task=&mode=` returning the numbers in the table in `ux-plan.md`,
 calculated from data we already store. No new tables.
 

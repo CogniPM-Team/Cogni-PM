@@ -257,6 +257,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Insights
+         * @description The oversight numbers for the runs started in the range. Reads only the runs, drafts and activity log.
+         */
+        get: operations["insights_api_insights_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/insights/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Insights
+         * @description One line per run in the group, with the figures each number is made from, so any number on the page can be
+         *     checked by hand. Same filters as the page.
+         */
+        get: operations["export_insights_api_insights_export_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/modes": {
         parameters: {
             query?: never;
@@ -914,6 +955,86 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * InsightsOut
+         * @description Counts, not percentages: the page shows "3 of 12", and every rate is one of these over another. Each field is
+         *     defined in docs/phases.md ("Insights: what the numbers mean").
+         */
+        InsightsOut: {
+            /**
+             * Approved Untouched
+             * @description Approved runs where every draft was created and none was edited
+             */
+            approved_untouched: number;
+            /** Decision Seconds Median */
+            decision_seconds_median: number | null;
+            /**
+             * Decision Seconds P90
+             * @description Nearest-rank 90th percentile
+             */
+            decision_seconds_p90: number | null;
+            /**
+             * Decisions Timed
+             * @description Decided runs that have a time to decision
+             */
+            decisions_timed: number;
+            /** Drafts Created After Edit */
+            drafts_created_after_edit: number;
+            /** Drafts Created As Written */
+            drafts_created_as_written: number;
+            /**
+             * Drafts Edited
+             * @description Reviewed drafts whose text differs from the agent's original
+             */
+            drafts_edited: number;
+            /** Drafts Left Out */
+            drafts_left_out: number;
+            /**
+             * Drafts Reviewed
+             * @description Drafts of decided runs; the next three add up to this
+             */
+            drafts_reviewed: number;
+            /** Refusals */
+            refusals: components["schemas"]["RefusalCount"][];
+            /** Refusals Total */
+            refusals_total: number;
+            /**
+             * Reruns
+             * @description Runs that replace an earlier one
+             */
+            reruns: number;
+            /**
+             * Runs Approved
+             * @description Decided runs with at least one draft created
+             */
+            runs_approved: number;
+            /**
+             * Runs Decided
+             * @description Of those, approved or rejected
+             */
+            runs_decided: number;
+            /**
+             * Runs Open
+             * @description Still working, waiting for review, or failed part-way: left out of every rate
+             */
+            runs_open: number;
+            /** Runs Rejected */
+            runs_rejected: number;
+            /**
+             * Runs Started
+             * @description Runs started in the range: the group every other number is about
+             */
+            runs_started: number;
+            /** Tokens Average */
+            tokens_average: number | null;
+            /**
+             * Tokens Runs
+             * @description Runs that have a token figure
+             */
+            tokens_runs: number;
+            /** Tokens Total */
+            tokens_total: number;
+        };
         /** ModeOut */
         ModeOut: {
             /** Can Commit */
@@ -956,6 +1077,13 @@ export interface components {
              * @description The Jira project every run works in
              */
             key: string;
+        };
+        /** RefusalCount */
+        RefusalCount: {
+            /** Count */
+            count: number;
+            /** Rule */
+            rule: string;
         };
         /** RejectBody */
         RejectBody: {
@@ -1759,6 +1887,74 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    insights_api_insights_get: {
+        parameters: {
+            query?: {
+                /** @description Only runs started at or after this time */
+                from?: string | null;
+                /** @description Only runs started before this time */
+                to?: string | null;
+                task?: ("p1" | "p2") | null;
+                mode?: ("M2" | "M3") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_insights_api_insights_export_csv_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+                task?: ("p1" | "p2") | null;
+                mode?: ("M2" | "M3") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

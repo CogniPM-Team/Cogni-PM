@@ -4,6 +4,7 @@ import Activity from './pages/Activity'
 import AgentConsole from './pages/AgentConsole'
 import Approvals from './pages/Approvals'
 import Home from './pages/Home'
+import Insights from './pages/Insights'
 import Library from './pages/Library'
 import NotFound from './pages/NotFound'
 import RunReview from './pages/RunReview'
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="approvals" element={<Approvals />} />
         <Route path="approvals/:id" element={<RunReview />} />
         <Route path="library" element={<Library />} />
+        <Route path="insights" element={<Insights />} />
         <Route path="activity" element={<Activity />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />

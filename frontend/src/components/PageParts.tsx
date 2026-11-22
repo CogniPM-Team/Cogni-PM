@@ -45,9 +45,9 @@ export function ErrorState({
 }
 
 /** A label and a number, for Home and Insights. */
-export function StatCard({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
+export function StatCard({ label, value, hint, source }: { label: string; value: ReactNode; hint?: string; source?: string }) {
   return (
-    <div className="stat-card">
+    <div className="stat-card" title={source}>
       <span className="stat-label">{label}</span>
       <strong className="stat-value">{value}</strong>
       {hint && <span className="stat-hint">{hint}</span>}

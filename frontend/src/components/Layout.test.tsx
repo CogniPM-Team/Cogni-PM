@@ -37,6 +37,7 @@ describe('Layout', () => {
       'Agent console',
       'Approvals',
       'Library',
+      'Insights',
       'Activity log',
     ])
     expect(within(nav).getByRole('group', { name: 'work' })).toBeInTheDocument()
@@ -92,7 +93,7 @@ describe('Layout', () => {
 
     const links = [...within(await screen.findByRole('navigation', { name: 'Main' })).getAllByRole('link')]
     links.push(...within(screen.getByRole('navigation', { name: 'System' })).getAllByRole('link'))
-    expect(links).toHaveLength(6)
+    expect(links).toHaveLength(7)
     for (const link of links) expect(link.querySelector('svg[aria-hidden="true"]')).not.toBeNull()
   })
 

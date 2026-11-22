@@ -9,7 +9,7 @@ export interface AuditQuery {
 }
 
 /** The start of a day (or the day after it) in the viewer's own time zone, as the instant the API compares with. */
-function localDay(day: string, plusDays = 0): string {
+export function localDay(day: string, plusDays = 0): string {
   const date = new Date(`${day}T00:00:00`)
   date.setDate(date.getDate() + plusDays)
   return date.toISOString()

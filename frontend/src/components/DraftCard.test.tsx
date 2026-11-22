@@ -53,15 +53,36 @@ describe('DraftCard', () => {
     expect(screen.getByText(/not found in the saved input/, { selector: '.muted' })).toBeInTheDocument()
   })
 
-  it('keeps an assumption in view, and says nothing when there is none', () => {
+  it('puts an assumption beside the other evidence, in amber so it is noticed, and has no tab when there is none', async () => {
+    const user = userEvent.setup()
     const { unmount } = show(draft('d1', 'Password reset', RESET, { assumptions: 'Logs are kept for 90 days' }))
-    expect(screen.getByRole('note')).toHaveTextContent('Check this assumption')
-    expect(screen.getByRole('note')).toHaveTextContent('Logs are kept for 90 days')
+    const tab = screen.getByRole('button', { name: 'Check this assumption' })
+    expect(tab).toHaveClass('warn')
+    expect(tab).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Logs are kept for 90 days')).not.toBeInTheDocument() // the text waits to be opened
+
+    await user.click(tab)
+    expect(screen.getByText('Logs are kept for 90 days')).toBeInTheDocument()
     unmount()
 
     show(draft('d2', 'Login audit', RESET, { assumptions: 'NA' }))
-    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Check this assumption' })).not.toBeInTheDocument()
     expect(screen.queryByText(/None stated/)).not.toBeInTheDocument()
+  })
+
+  it('opens the assumption, the reasons and the quotes one at a time', async () => {
+    const user = userEvent.setup()
+    show(draft('d1', 'Password reset', RESET, { assumptions: 'Logs are kept for 90 days' }))
+    const assumption = screen.getByRole('button', { name: 'Check this assumption' })
+    const why = screen.getByRole('button', { name: 'Why the agent drafted this' })
+
+    await user.click(assumption)
+    await user.click(why)
+
+    expect(assumption).toHaveAttribute('aria-expanded', 'false')
+    expect(why).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.queryByText('Logs are kept for 90 days')).not.toBeInTheDocument()
+    expect(screen.getByText('The notes ask for this directly.')).toBeInTheDocument()
   })
 
   it('cuts a long description to a few lines and lets you read all of it, but not a short one', async () => {

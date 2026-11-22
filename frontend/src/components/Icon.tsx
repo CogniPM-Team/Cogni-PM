@@ -71,6 +71,7 @@ const DRAWINGS: Record<IconKey, React.ReactNode> = {
       <path d="M12 11v5.5M12 7.5h.01" />
     </>
   ),
+  insights: <path d="M5 20v-9M12 20V4M19 20v-6" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
   panel: (
     <>

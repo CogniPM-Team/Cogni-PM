@@ -730,3 +730,34 @@ th, .nav-label, .draft-body h4, .run-meta dt, .log-heads { text-transform: none;
 .evidence-panel p + p { margin-top: 8px; }
 .evidence-panel .quote { margin: 0; color: var(--text); }
 .evidence-panel .quote + .quote { margin-top: 8px; }
+
+/* ---------- insights ---------- */
+.insights-group { margin: 4px 0 16px; color: var(--text-muted); }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 16px; }
+.stat-card .stat-value { color: var(--text-strong); }
+.insights-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 16px; align-items: start; }
+@media (min-width: 1000px) { .insights-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.insights-grid .card h2 { margin: 0 0 6px; font-size: var(--text-lg); }
+.insights-grid .card > .meta { margin: 6px 0 0; }
+.stack-bar { display: flex; height: 14px; margin: 14px 0 12px; overflow: hidden; border-radius: 7px; background: var(--border-soft); }
+.seg-written { background: var(--green-dot); }
+.seg-edited { background: var(--brand); }
+.seg-left-out { background: #b3b9bf; }
+.legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.legend li { display: flex; align-items: center; gap: 10px; }
+.legend li > span:nth-child(2) { flex: 1; color: var(--text); }
+.swatch { width: 10px; height: 10px; flex: none; border-radius: 3px; }
+.time-pair { display: flex; flex-wrap: wrap; gap: 8px 36px; margin: 10px 0 4px; }
+.time-pair > div { display: flex; flex-direction: column; gap: 2px; }
+.time-pair .stat-value { font-size: 1.75rem; font-weight: 600; line-height: 1.2; color: var(--text-strong); }
+.rule-bars { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.rule-bars li { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr) auto; align-items: center; gap: 12px; }
+.rule-name { text-transform: capitalize; color: var(--text); }
+.track { display: block; height: 8px; border-radius: 4px; background: var(--border-soft); overflow: hidden; }
+.fill { display: block; height: 100%; border-radius: 4px; background: var(--amber); }
+
+/* An assumption tab is amber so a draft that rests on a guess is noticed without its text being in the way. */
+.evidence-tab.warn { color: var(--amber-ink); }
+.evidence-tab.warn:hover:not(:disabled) { background: var(--amber-wash); color: var(--amber-ink); }
+.evidence-tab.warn[aria-expanded='true'] { background: var(--amber-tint); color: var(--amber-ink); }
+.evidence-panel .assumption-text { padding-left: 10px; border-left: 3px solid var(--amber); color: var(--text); }

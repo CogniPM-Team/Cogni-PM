@@ -7,7 +7,7 @@
 export type NavSection = 'WORK' | 'RECORD' | 'SYSTEM'
 
 /** Which drawing goes beside a label (see components/Icon). */
-export type IconName = 'home' | 'console' | 'approvals' | 'library' | 'activity' | 'settings'
+export type IconName = 'home' | 'console' | 'approvals' | 'library' | 'insights' | 'activity' | 'settings'
 
 export interface NavItem {
   id: string
@@ -27,6 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'console', icon: 'console', label: 'Agent console', path: '/console', section: 'WORK', enabled: true },
   { id: 'approvals', icon: 'approvals', label: 'Approvals', path: '/approvals', section: 'WORK', enabled: true, badge: 'waiting' },
   { id: 'library', icon: 'library', label: 'Library', path: '/library', section: 'RECORD', enabled: true },
+  { id: 'insights', icon: 'insights', label: 'Insights', path: '/insights', section: 'RECORD', enabled: true },
   { id: 'activity', icon: 'activity', label: 'Activity log', path: '/activity', section: 'RECORD', enabled: true },
   { id: 'settings', icon: 'settings', label: 'Settings', path: '/settings', section: 'SYSTEM', enabled: true },
 ]
