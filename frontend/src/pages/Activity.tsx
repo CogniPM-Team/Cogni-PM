@@ -2,8 +2,10 @@ import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { AuditFilter, AuditPage, AuditRow } from '../api/types'
 import { useFetch } from '../api/useFetch'
+import { EmptyState, ErrorState, PageHeader, Tabs } from '../components/PageParts'
 import { auditToCsv } from '../lib/csv'
 import { actionLabel, actorLabel, describeDetail, formatTime, MODE_NAMES } from '../lib/format'
+import { tabPanelProps } from '../lib/tabs'
 
 const FILTERS: { id: AuditFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -69,7 +71,7 @@ export default function Activity() {
   const [filter, setFilter] = useState<AuditFilter>('all')
   const [grouped, setGrouped] = useState(false)
   const [open, setOpen] = useState<Set<number>>(new Set())
-  const { data, error, loading } = useFetch<AuditPage>(`/api/audit?filter=${filter}&limit=500`)
+  const { data, error, loading, reload } = useFetch<AuditPage>(`/api/audit?filter=${filter}&limit=500`)
 
   const rows = data?.rows ?? []
   const byRun = new Map<string, AuditRow[]>()
@@ -85,16 +87,14 @@ export default function Activity() {
 
   return (
     <>
-      <p className="page-subtitle">
-        Every step an agent took and every decision you made, newest first. Entries cannot be changed or deleted.
-      </p>
-      <div className="tabs" role="tablist" aria-label="Filter">
-        {FILTERS.map((f) => (
-          <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)}>
-            {f.label}
-          </button>
-        ))}
-      </div>
+      <PageHeader description="Every step an agent took and every decision you made, newest first. Entries cannot be changed or deleted." />
+      <Tabs
+        label="Filter"
+        tabs={FILTERS.map((f) => ({ id: f.id, label: f.label }))}
+        value={filter}
+        onChange={(id) => setFilter(id as AuditFilter)}
+      />
+      <div {...tabPanelProps(filter)}>
 
       <div className="toolbar">
         <label>
@@ -111,8 +111,8 @@ export default function Activity() {
       </div>
 
       {loading && <p className="muted">Loading...</p>}
-      {error && <p className="error">Could not load the activity log: {error.message}</p>}
-      {data && rows.length === 0 && <p className="empty">Nothing matches this filter yet.</p>}
+      {error && <ErrorState title="Could not load the activity log" message={error.message} onRetry={reload} />}
+      {data && rows.length === 0 && <EmptyState>Nothing matches this filter yet.</EmptyState>}
       {rows.length > 0 && (
         <div className="card">
           <table>
@@ -149,6 +149,7 @@ export default function Activity() {
           </table>
         </div>
       )}
+      </div>
     </>
   )
 }

@@ -145,6 +145,24 @@ label.field > span { font-weight: 500; }
 .tabs button { min-height: 0; padding: 10px 4px; margin-bottom: -1px; border: none; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--text-muted); line-height: 1.5; }
 .tabs button[aria-selected='true'] { color: var(--brand); border-bottom-color: var(--brand); }
 
+.nav-item + .nav-label, .side-nav > div + div { margin-top: 4px; }
+.side-nav > div { display: flex; flex-direction: column; gap: 2px; }
+
+/* ---------- shared page pieces ---------- */
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.page-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.empty-state { padding: 20px 0; color: var(--text-muted); }
+.empty-state h3 { margin: 0 0 4px; color: var(--text); }
+.empty-state p { margin: 0 0 12px; }
+.error-state { margin: 12px 0; padding: 14px 18px; border-left: 3px solid var(--red); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: var(--red-tint); color: var(--red); }
+.error-state p { margin: 4px 0 10px; }
+.error-state button { border-color: var(--red); color: var(--red); background: transparent; }
+.stat-card { display: flex; flex-direction: column; gap: 2px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.stat-label { font-size: var(--text-sm); color: var(--text-muted); }
+.stat-value { font-size: 1.75rem; font-weight: 500; line-height: 1.2; }
+.stat-hint { font-size: var(--text-xs); color: var(--text-faint); }
+.tab-count { margin-left: 6px; padding: 0 7px; border-radius: 9px; background: var(--border-soft); color: var(--text-muted); font-size: var(--text-xs); }
+
 /* ---------- pills and status ---------- */
 .pill { display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border-radius: 13px; background: var(--lv-tint, var(--border-soft)); color: var(--lv-ink, var(--text)); font-size: var(--text-sm); font-weight: 600; white-space: nowrap; }
 .pill::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--lv, var(--control)); }

@@ -1,25 +1,14 @@
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import type { Project, RunList } from '../api/types'
 import { useFetch } from '../api/useFetch'
-
-function pageTitle(pathname: string): { title: string; crumb: string } {
-  if (pathname.startsWith('/approvals/')) return { title: 'Review a run', crumb: 'Approvals › Review' }
-  if (pathname.startsWith('/console')) return { title: 'Agent console', crumb: 'Agent console' }
-  const titles: Record<string, string> = {
-    '/console': 'Agent console',
-    '/approvals': 'Approvals',
-    '/activity': 'Activity log',
-  }
-  const title = titles[pathname] ?? 'CogniPM'
-  return { title, crumb: title }
-}
+import { pageInfo, visibleNav } from '../lib/nav'
 
 export default function Layout() {
   const { pathname } = useLocation()
   // The query string only makes the badge refetch on every navigation; the API ignores it.
   const { data: runs } = useFetch<RunList>(`/api/runs?page=${encodeURIComponent(pathname)}`)
   const { data: project } = useFetch<Project>('/api/project')
-  const { title, crumb } = pageTitle(pathname)
+  const { title, crumb } = pageInfo(pathname)
   const waiting = runs?.awaiting_review_count ?? 0
 
   return (
@@ -34,20 +23,23 @@ export default function Layout() {
 
         <div className="side-scroll">
           <nav className="side-nav" aria-label="Main">
-            <NavLink to="/console" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-              Agent console
-            </NavLink>
-            <NavLink to="/approvals" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-              Approvals
-              {waiting > 0 && (
-                <span className="nav-badge" aria-label={`${waiting} waiting for you`}>
-                  {waiting}
+            {visibleNav().map((group) => (
+              <div key={group.section} role="group" aria-label={group.section.toLowerCase()}>
+                <span className="nav-label" aria-hidden="true">
+                  {group.section}
                 </span>
-              )}
-            </NavLink>
-            <NavLink to="/activity" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-              Activity log
-            </NavLink>
+                {group.items.map((item) => (
+                  <NavLink key={item.id} to={item.path} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+                    {item.label}
+                    {item.badge === 'waiting' && waiting > 0 && (
+                      <span className="nav-badge" aria-label={`${waiting} waiting for you`}>
+                        {waiting}
+                      </span>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            ))}
           </nav>
         </div>
 

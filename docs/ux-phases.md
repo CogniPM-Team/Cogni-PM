@@ -71,6 +71,9 @@ Rules that apply to every page:
 
 ## U0. Foundations
 
+**Status: done.** One deliberate change from the plan below: there is no `/home` placeholder route. Home is listed in
+`nav.ts` with `enabled: false`, and the route arrives with U1, so no address leads to an empty page.
+
 **Goal:** make the sidebar and page layout easy to extend, so each later phase only adds a page.
 
 **Build (frontend only):**

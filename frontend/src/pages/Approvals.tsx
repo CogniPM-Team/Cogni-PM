@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { RunList, RunSummary } from '../api/types'
 import { useFetch } from '../api/useFetch'
+import { EmptyState, ErrorState, PageHeader } from '../components/PageParts'
 import { ModePill, StatusPill } from '../components/Pills'
 import { ago, formatTime, plural, TASK_NAMES } from '../lib/format'
 
@@ -26,21 +27,19 @@ function QueueCard({ run }: { run: RunSummary }) {
 }
 
 export default function Approvals() {
-  const { data, error, loading } = useFetch<RunList>('/api/runs')
+  const { data, error, loading, reload } = useFetch<RunList>('/api/runs')
 
   if (loading) return <p className="muted">Loading...</p>
-  if (error || !data) return <p className="error">Could not load runs: {error?.message}</p>
+  if (error || !data) return <ErrorState title="Could not load your runs" message={error?.message} onRetry={reload} />
 
   return (
     <>
-      <p className="page-subtitle">
-        Nothing the agents draft reaches Jira until you approve it here. Runs that have waited longest come first.
-      </p>
+      <PageHeader description="Nothing the agents draft reaches Jira until you approve it here. Runs that have waited longest come first." />
       <h2 style={{ marginTop: 0 }}>{data.awaiting_review_count} waiting for you</h2>
       {data.waiting.length === 0 ? (
-        <p className="empty">
+        <EmptyState>
           Nothing is waiting. Start a task in the <Link to="/console">Agent console</Link>.
-        </p>
+        </EmptyState>
       ) : (
         <div className="queue">
           {data.waiting.map((run) => (
@@ -51,7 +50,7 @@ export default function Approvals() {
 
       <h2>Earlier runs</h2>
       {data.past.length === 0 ? (
-        <p className="empty">No earlier runs yet.</p>
+        <EmptyState>No earlier runs yet.</EmptyState>
       ) : (
         <div className="card">
           <table>

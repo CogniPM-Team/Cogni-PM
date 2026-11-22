@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client'
 import type { ApproveResult, RerunResult, RunDetail } from '../api/types'
 import { useFetch } from '../api/useFetch'
 import DraftCard from '../components/DraftCard'
+import { EmptyState, ErrorState } from '../components/PageParts'
 import { ModePill, StatusPill } from '../components/Pills'
 import SourceText from '../components/SourceText'
 import StepTrace from '../components/StepTrace'
@@ -15,7 +16,7 @@ export default function RunReview() {
   const { data, error, loading, reload } = useFetch<RunDetail>(`/api/runs/${id}`)
 
   if (loading) return <p className="muted">Loading...</p>
-  if (error || !data) return <p className="error">Could not load this run: {error?.message}</p>
+  if (error || !data) return <ErrorState title="Could not load this run" message={error?.message} onRetry={reload} />
   return <ReviewBody key={data.run.id} detail={data} reload={reload} />
 }
 
@@ -180,7 +181,7 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
         </div>
       )}
 
-      {drafts.length === 0 && run.status !== 'running' && <p className="empty">This run produced no drafts.</p>}
+      {drafts.length === 0 && run.status !== 'running' && <EmptyState>This run produced no drafts.</EmptyState>}
 
       <div className="review">
         <div>
@@ -265,7 +266,7 @@ function ReviewBody({ detail, reload }: { detail: RunDetail; reload: () => void 
           {detail.input_text ? (
             <SourceText text={detail.input_text} drafts={drafts} activeDraft={active} />
           ) : (
-            <p className="empty">The original input was not kept for this run.</p>
+            <EmptyState>The original input was not kept for this run.</EmptyState>
           )}
         </aside>
       </div>
