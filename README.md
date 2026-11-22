@@ -30,22 +30,21 @@ decides which tools each mode gets · PostgreSQL (oversight records) · Jira Clo
 
 ## Before you start
 
-You need:
+To **run** it you need:
 
 | Thing | Notes |
 |---|---|
 | **Git** | |
-| **Python 3.11 or newer** | |
-| **Node 24.15 or newer** | Older Node fails the frontend tests (`jsdom` needs it). |
-| **Docker Desktop** | Runs PostgreSQL. Without Docker see [No Docker?](#no-docker) |
+| **Docker Desktop** | Runs everything: the app and its PostgreSQL database. |
 | **A Jira Cloud site, a project, and an [API token](https://id.atlassian.com/manage-profile/security/api-tokens)** | **Use a sandbox project.** Approving a draft creates a real issue there. |
 | **A [Gemini API key](https://aistudio.google.com/apikey) with credit** | Drafting and the Co-Pilot call the model. A key with no credit fails with HTTP 402. |
 
+To **change the code and run the tests** you also need Python 3.11 or newer and Node 24.15 or newer (older Node fails
+the frontend tests, because `jsdom` needs it).
+
 ## Get it running
 
-Three things run side by side: Postgres, the API and the website. Use a separate terminal for each.
-
-### 1. Clone and configure
+### The easy way: one command (Docker)
 
 ```bash
 git clone https://github.com/CogniPM-Team/Cogni-PM.git
@@ -54,44 +53,54 @@ cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
 ```
 
 Open `.env` and fill in `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` and `GEMINI_API_KEY`.
-`.env` is git-ignored: never commit it or paste its values anywhere. You fill in `JIRA_STORY_POINTS_FIELD` in
-step 3.
-
-### 2. Start PostgreSQL
+`.env` is git-ignored: never commit it or paste its values anywhere. Then:
 
 ```bash
-docker run -d --name cognipm-db -p 5432:5432 \
-  -e POSTGRES_USER=cognipm -e POSTGRES_PASSWORD=cognipm -e POSTGRES_DB=cognipm \
-  -v cognipm-db-data:/var/lib/postgresql/data pgvector/pgvector:pg16
+docker compose up --build
 ```
 
-(On Windows PowerShell write it on one line, without the `\` line breaks.) The `-v` keeps your data when the
-container restarts. Later: `docker start cognipm-db` / `docker stop cognipm-db`.
+The first run builds the image and takes a few minutes. When it settles, open **<http://localhost:8000>**: the
+website and the API are the same address. The API docs are at <http://localhost:8000/docs>.
 
-**Port 5432 already in use?** You may already run PostgreSQL. Use `-p 5433:5432` instead and add this line to
-`.env`: `DATABASE_URL=postgresql://cognipm:cognipm@localhost:5433/cognipm`
+| Command | What it does |
+|---|---|
+| `docker compose up --build` | Build and start (add `-d` to run in the background) |
+| `docker compose down` | Stop it. Your data is kept. |
+| `docker compose down -v` | Stop it **and delete the database** |
+| `docker compose logs -f app` | Watch the app's log |
 
-### 3. Start the API
+It starts two containers: the app (the API with the built website, one image) and PostgreSQL. The app creates the
+database tables itself on first start. Both ports are bound to your own machine only.
+
+**A port is already in use?** Set another one for that run, for example
+`COGNIPM_PORT=8010 COGNIPM_DB_PORT=5440 docker compose up` (PowerShell: `$env:COGNIPM_PORT=8010; docker compose up`).
+
+You also need to know your site's story-points field id only if you change how estimates are handled; the drafting
+flow does not use it. (`python backend/scripts/check_connection.py` prints it if you ever need it.)
+
+> **There is no login yet.** Anyone who can reach the app can approve a write to Jira. Run it on your own machine
+> only; do not expose it to a network.
+
+### For developers: run the pieces yourself
+
+Use this when you are changing code and want hot reload. Run the database from Docker, and the API and the website
+as normal processes, each in its own terminal.
+
+```bash
+docker compose up -d db                # PostgreSQL only, on localhost:5433
+```
+
+Add `DATABASE_URL=postgresql://cognipm:cognipm@localhost:5433/cognipm` to `.env`. Then the API:
 
 ```bash
 cd backend
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-python scripts/check_connection.py # reads your Jira site; changes nothing
-```
-
-`check_connection.py` prints your site's story-points field id. Copy it into `.env` as `JIRA_STORY_POINTS_FIELD`
-(it differs per Jira site, so it is never hardcoded). Then:
-
-```bash
 uvicorn cognipm.api.main:app --reload
 ```
 
-The API is at <http://localhost:8000> and its interactive docs are at <http://localhost:8000/docs>. It creates
-the database tables itself on first start.
-
-### 4. Start the website
+And the website, in another terminal:
 
 ```bash
 cd frontend
@@ -99,10 +108,8 @@ npm install
 npm run dev
 ```
 
-Open **<http://localhost:5173>**. The dev server forwards `/api` to the API on port 8000.
-
-> **There is no login yet.** Anyone who can reach the API can approve a write to Jira. Run it on your own machine
-> only; do not expose it to a network.
+Open **<http://localhost:5173>**. The dev server forwards `/api` to the API on port 8000, so you see your changes
+immediately.
 
 ## Try it
 
@@ -121,13 +128,14 @@ Open **<http://localhost:5173>**. The dev server forwards `/api` to the API on p
 **Backend** (from `backend/`):
 
 ```bash
-docker exec cognipm-db createdb -U cognipm cognipm_test      # once: a separate database for the tests
-DATABASE_URL=postgresql://cognipm:cognipm@localhost:5432/cognipm_test pytest -q
+docker compose up -d db                                        # the database, if it is not already running
+docker compose exec db createdb -U cognipm cognipm_test        # once: a separate database for the tests
+DATABASE_URL=postgresql://cognipm:cognipm@localhost:5433/cognipm_test pytest -q
 ruff check . && ruff format --check .
 ```
 
-(PowerShell: `$env:DATABASE_URL="postgresql://cognipm:cognipm@localhost:5432/cognipm_test"; pytest -q`. If you
-used port 5433, change it in the URL.)
+(PowerShell: `$env:DATABASE_URL="postgresql://cognipm:cognipm@localhost:5433/cognipm_test"; pytest -q`. If you set
+`COGNIPM_DB_PORT`, use that port in the URL.)
 
 > **The tests wipe their database** (every test rebuilds the schema), so they must never point at the database the
 > app uses. They refuse any database whose name does not contain `test`, and say so. No Jira site or Gemini key is
@@ -162,9 +170,11 @@ Each prints before and after state so you can see nothing is left behind.
 
 | You see | Do this |
 |---|---|
-| `password authentication failed for user "cognipm"` | Something else is using port 5432. Use `-p 5433:5432` and set `DATABASE_URL` as in step 2. |
+| `password authentication failed for user "cognipm"` or `port is already allocated` | Another PostgreSQL or container is using the port. Set a free one: `COGNIPM_DB_PORT=5440` (and use it in `DATABASE_URL`). |
+| `docker compose up` says `.env` is missing | Copy `.env.example` to `.env` and fill it in (step 1). |
+| The page at `localhost:8000` is blank or shows "Cannot GET" | The image has not finished building, or the build failed. Run `docker compose logs app`. |
 | `Refusing to run the tests against database 'cognipm'` | Working as intended. Use the `cognipm_test` database (see Run the tests). |
-| The website loads but shows "Could not load" | The API is not running, or cannot reach Postgres. Check the API terminal. |
+| The website loads but shows "Could not load" | The app cannot reach Postgres or Jira. Run `docker compose logs app`. |
 | Drafting fails with `402` / "credits depleted" | The Gemini key has no credit. Top it up or use another key. |
 | `Jira returned 401` | Wrong `JIRA_EMAIL` or `JIRA_API_TOKEN`. The token belongs to the email's Atlassian account. |
 | Creating a draft fails naming a required field | Your Jira project requires a field a draft cannot fill. Add a default for it in Jira. |
@@ -173,8 +183,8 @@ Each prints before and after state so you can see nothing is left behind.
 
 ### No Docker?
 
-Install the embedded database instead: `pip install -e ".[embedded-db]"`. The tests then start a throwaway
-Postgres by themselves. To run the app itself you still need a Postgres you can point `DATABASE_URL` at.
+Docker is the supported way to run it. For the tests only, `pip install -e ".[embedded-db]"` lets them start a
+throwaway Postgres by themselves. To run the app you still need a PostgreSQL you can point `DATABASE_URL` at.
 
 ## Repository layout
 
@@ -192,6 +202,8 @@ backend/
 frontend/src/      api/ components/ hooks/ lib/ pages/ styles/ test/
 docs/              architecture.md, phases.md, sample-notes.md
 .mcp.json          lets Claude Code drive the gateway at M1, M2 or M3 by hand
+Dockerfile         the app image: builds the website, serves it from the API
+docker-compose.yml the app and PostgreSQL together
 .github/           CI, PR template, Dependabot
 ```
 

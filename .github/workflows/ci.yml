@@ -71,11 +71,22 @@ jobs:
       - run: ruff format --check .
       - run: pytest -q
 
+  # The image must keep building: it is how teammates run the product. Builds only; nothing is pushed.
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t cognipm-app .
+      - name: The image must not contain secrets or a .env file
+        run: |
+          docker run --rm --entrypoint sh cognipm-app -c 'test ! -f /app/.env'
+
   # Single stable check name for the branch ruleset to require, so the ruleset
   # never has to change when jobs above are added, renamed, or skipped.
   ci:
     if: always()
-    needs: [frontend, backend]
+    needs: [frontend, backend, docker]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any job failed or was cancelled

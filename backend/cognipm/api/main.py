@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from cognipm.api.launcher import fail_orphaned_runs
 from cognipm.api.routes import audit, chat, modes, runs, stories
+from cognipm.api.static import frontend_dist, mount_frontend
 from cognipm.config import cors_origins
 from cognipm.db.connection import get_connection
 
@@ -39,3 +40,7 @@ for router in (runs.router, chat.router, audit.router, modes.router, stories.rou
 @app.get("/api/health", tags=["meta"])
 def health() -> dict:
     return {"ok": True}
+
+
+# Last, so it only answers what nothing above did. Does nothing unless the website has been built.
+mount_frontend(app, frontend_dist())

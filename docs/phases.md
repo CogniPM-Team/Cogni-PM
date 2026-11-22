@@ -520,6 +520,16 @@ own address (`/console/<id>`) with its full history (and "Read Jira N times"), *
   1250px the two panes stack and the page scrolls. Other pages keep their 1280px cap.
 - Not done: search across chats and nested folders.
 
+**One-command run (22 Nov).** `docker compose up --build` starts the whole product: the API serves the built website
+(one address, `http://localhost:8000`) beside a PostgreSQL container. The `Dockerfile` builds the frontend in a Node
+stage, then installs the backend in a Python stage with the website next to it; secrets are read from `.env` at run
+time and are never in the image (CI checks there is no `.env` in it). The API serves `index.html` for every non-API
+path, so a deep link or reload works, and refuses to serve any file outside the website folder. Verified: both
+containers healthy, the site and a deep link load, an unknown `/api` path is a JSON 404, a real Jira read works, and the
+MCP gateway runs as a subprocess inside the container (M1, M2, M3 tool sets over stdio). Ports bind to 127.0.0.1 only
+because there is no login. The database is published on 5433 (not 5432) so it does not collide with a PostgreSQL on
+the host.
+
 **Done when (MVP complete):** a PM can paste requirements in the console, review and approve the drafted stories
 in Approvals, break one down into tasks, see the created issues in Jira, and trace every step in the Activity
 log, with a recorded end-to-end demo. This is the paper's "end of November" MVP: LLM integration, approval
